@@ -5,15 +5,18 @@ description = "Convert ViennaLS/ViennaPS interfaces into simulation-ready meshes
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    "meshio~=5.3.5",
     "pymeshlab~=2025.7",
     "scipy~=1.16.3",
     "viennaps>=4.5.0",
     "viennals>=5.7.r",
     "vtk~=9.4.2",
+]
+
+[project.optional-dependencies]
+viewer = [
+    "plotly>=6.8.0",
     "pyvista>=0.48.4",
     "streamlit>=1.57.0",
-    "plotly>=6.8.0",
 ]
 
 [build-system]
@@ -26,14 +29,17 @@ path = "hatch_build_triangle.py"
 [dependency-groups]
 dev = [
     "hatchling>=1.28.0",
+    "plotly>=6.8.0",
+    "pyvista>=0.48.4",
     "pytest>=9.0.2",
     "ruff>=0.15.4",
+    "streamlit>=1.57.0",
     "ty>=0.0.19",
 ]
 
 [project.scripts]
 lsmesher = "lsmesher.cli:main"
-lsmesher-viewer = "lsmesher.viewer:main"
+lsmesher-viewer = "lsmesher.viewer_cli:main"
 
 [tool.ruff]
 line-length = 88

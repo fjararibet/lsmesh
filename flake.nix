@@ -83,7 +83,7 @@
               exec uv run --frozen ${command} "$@"
             '';
           };
-          runViewer = mkLsmesherApp "lsmesher-viewer" "lsmesher-viewer";
+          runViewer = mkLsmesherApp "lsmesher-viewer" "--extra viewer lsmesher-viewer";
           runCli = mkLsmesherApp "lsmesher" "lsmesher";
         in
         {
