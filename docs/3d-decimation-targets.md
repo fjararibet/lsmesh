@@ -131,3 +131,7 @@ to every patch. They are not reinterpreted as global targets.
 
 New code should use `target_total_faces` or `target_edge_length`. The legacy
 mode is reported as `legacy_per_patch` so downstream tools can identify it.
+
+Spatially varying resolution for thin films, approaching sheets, curvature,
+and junctions is deferred to the
+[local-feature-aware sizing plan](local-feature-aware-sizing-plan.md).
