@@ -12,7 +12,7 @@ import sys
 import tempfile
 import tomllib
 import zipfile
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, cast
 
@@ -46,6 +46,7 @@ class Preset:
     config: Path | None = None
     directory: Path | None = None
     original_patterns: tuple[str, ...] = ()
+    runner: str = "files"
 
 
 @dataclass(frozen=True)
@@ -158,6 +159,7 @@ def _preset_from_metadata(preset_dir: Path) -> Preset | None:
         config=config,
         directory=preset_dir,
         original_patterns=tuple(str(pattern) for pattern in original_patterns),
+        runner=str(metadata.get("runner", "files")),
     )
 
 
@@ -192,7 +194,7 @@ def _presets(root: Path) -> list[Preset]:
     presets: list[Preset] = []
     for preset_dir in sorted(path for path in presets_dir.iterdir() if path.is_dir()):
         metadata_preset = _preset_from_metadata(preset_dir)
-        if metadata_preset is not None:
+        if metadata_preset is not None and metadata_preset.runner != "sdk":
             generated_outputs = _discover_preset_outputs(
                 _preset_output_dir(root, metadata_preset.name) / "generated_preset",
                 dimension=metadata_preset.dimension or 3,
@@ -209,6 +211,7 @@ def _presets(root: Path) -> list[Preset]:
                     config=metadata_preset.config,
                     directory=metadata_preset.directory,
                     original_patterns=metadata_preset.original_patterns,
+                    runner=metadata_preset.runner,
                 )
             presets.append(metadata_preset)
     return presets
@@ -333,6 +336,83 @@ def _load_preset(
         message = f"Preset ran successfully but produced no viewable files in {workdir}"
         raise FileNotFoundError(message)
     return files, f"Generated {len(files)} file(s) in {workdir}."
+
+
+def _run_sdk_preset(
+    preset: Preset,
+    root: Path,
+    *,
+    config_values: dict[str, str],
+    options: ProcessedMeshOptions,
+    output_dir: Path,
+) -> tuple[Path, dict[str, Any], str]:
+    """Execute an SDK preset and return its declared output and manifest."""
+    if preset.script is None or preset.config is None or preset.dimension is None:
+        msg = f"SDK preset is incomplete: {preset.name}"
+        raise ValueError(msg)
+
+    workdir = _prepare_output_dir(output_dir)
+    config_path = workdir / preset.config.name
+    _write_config_with_values(preset.config, config_path, config_values)
+    output_suffix = ".vtu" if options.run_mesher else ".vtp"
+    output_path = workdir / f"mesh{output_suffix}"
+    manifest_path = workdir / "lsmesher-preset-result.json"
+    request_path = workdir / "lsmesher-preset-request.json"
+    request = {
+        "dimension": preset.dimension,
+        "output_path": str(output_path),
+        "manifest_path": str(manifest_path),
+        "run_mesher": options.run_mesher,
+        "validate": True,
+        "build": {
+            "epsilon": options.epsilon,
+            "bottom_margin": options.mesher.bottom_margin,
+            "seam_protection_rings": options.mesher.seam_protection_rings,
+            "decimation": asdict(options.decimation),
+        },
+        "mesher": asdict(options.mesher),
+    }
+    request_path.write_text(json.dumps(request, indent=2) + "\n", encoding="utf-8")
+
+    env = os.environ.copy()
+    python_paths = [str(root / "src")]
+    if preset.directory is not None:
+        python_paths.append(str(preset.directory))
+    if env.get("PYTHONPATH"):
+        python_paths.append(env["PYTHONPATH"])
+    env["PYTHONPATH"] = os.pathsep.join(python_paths)
+    env["LSMESHER_PRESET_REQUEST"] = str(request_path)
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(preset.script),
+            "-D",
+            str(preset.dimension),
+            str(config_path),
+        ],
+        cwd=workdir,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        msg = (
+            f"Preset failed with exit code {result.returncode}\n\n"
+            f"stdout:\n{result.stdout}\n\nstderr:\n{result.stderr}"
+        )
+        raise RuntimeError(msg)
+    if not manifest_path.exists():
+        msg = f"SDK preset did not write its result manifest: {preset.name}"
+        raise FileNotFoundError(msg)
+    manifest = cast(
+        "dict[str, Any]", json.loads(manifest_path.read_text(encoding="utf-8"))
+    )
+    declared_output = Path(str(manifest["output"]))
+    if not declared_output.exists():
+        msg = f"SDK preset declared a missing output: {declared_output}"
+        raise FileNotFoundError(msg)
+    return declared_output, manifest, f"Generated SDK mesh in {workdir}."
 
 
 def _display_path(path: Path, root: Path) -> str:
@@ -1627,6 +1707,7 @@ def app() -> None:  # noqa: C901, PLR0912, PLR0915
     st.session_state.setdefault("preset_name", "")
     st.session_state.setdefault("preset_description", "")
     st.session_state.setdefault("preset_dimension", None)
+    st.session_state.setdefault("preset_manifest", {})
     preview_modes = ["Processed mesh", "Raw selected files"]
     if st.session_state.get("preview_mode") not in preview_modes:
         st.session_state["preview_mode"] = preview_modes[0]
@@ -1677,6 +1758,7 @@ def app() -> None:  # noqa: C901, PLR0912, PLR0915
 
     viewer_tab, config_tab = st.sidebar.tabs(["Viewer", "Config"])
     config_values: dict[str, str] = {}
+    generate_requested = False
     with config_tab:
         if selected_preset is not None and selected_preset.config is not None:
             st.subheader("Preset config")
@@ -1692,20 +1774,23 @@ def app() -> None:  # noqa: C901, PLR0912, PLR0915
                 for entry in _read_config_entries(selected_preset.config)
             }
             if st.button("⚙ Generate preset"):
-                with st.spinner(f"Generating {selected_preset.name}..."):
-                    selected_paths, message = _load_preset(
-                        selected_preset,
-                        root,
-                        config_values=config_values,
-                        force_generate=True,
-                        output_dir=_preset_output_dir(root, selected_preset.name)
-                        / "generated_preset",
-                    )
-                st.session_state["preset_paths"] = [
-                    str(path) for path in selected_paths
-                ]
-                st.session_state["preset_message"] = message
-                st.rerun()
+                if selected_preset.runner == "sdk":
+                    generate_requested = True
+                else:
+                    with st.spinner(f"Generating {selected_preset.name}..."):
+                        selected_paths, message = _load_preset(
+                            selected_preset,
+                            root,
+                            config_values=config_values,
+                            force_generate=True,
+                            output_dir=_preset_output_dir(root, selected_preset.name)
+                            / "generated_preset",
+                        )
+                    st.session_state["preset_paths"] = [
+                        str(path) for path in selected_paths
+                    ]
+                    st.session_state["preset_message"] = message
+                    st.rerun()
         else:
             st.info("This preset has no editable config.")
 
@@ -1759,9 +1844,32 @@ def app() -> None:  # noqa: C901, PLR0912, PLR0915
         decimation = DecimationOptions3D()
         if dimension == 3:
             decimation = _decimation_sidebar_controls(DecimationOptions3D())
-        st.button("↻ Recompute outputs")
+        recompute_requested = st.button("↻ Recompute outputs")
         show_edges = st.toggle("Show edges", value=True)
         color = st.color_picker("Mesh color", "#8dd3ff")
+    sdk_preset = selected_preset is not None and selected_preset.runner == "sdk"
+    if sdk_preset and (generate_requested or recompute_requested):
+        processed_options = ProcessedMeshOptions(
+            epsilon=epsilon,
+            output_format=output_format,
+            run_mesher=run_mesher,
+            decimation=decimation,
+            mesher=mesher,
+        )
+        with st.spinner(f"Running {selected_preset.name} through the SDK..."):
+            output_path, manifest, message = _run_sdk_preset(
+                selected_preset,
+                root,
+                config_values=config_values,
+                options=processed_options,
+                output_dir=_preset_output_dir(root, selected_preset.name)
+                / "processed_mesh",
+            )
+        selected_paths = [output_path]
+        st.session_state["preset_paths"] = [str(output_path)]
+        st.session_state["preset_manifest"] = manifest
+        st.session_state["preset_message"] = message
+
     if not selected_paths:
         st.info("Generate or select a preset.")
         return
@@ -1803,6 +1911,39 @@ def app() -> None:  # noqa: C901, PLR0912, PLR0915
                     output_path,
                     options=MeshRenderOptions(show_edges=show_edges, color=color),
                 )
+        elif sdk_preset:
+            output_path = selected_paths[0]
+            wireframe = processed_display == "Wireframe edges"
+            if renderer == "PyVista PNG":
+                _render_mesh_png(
+                    output_path,
+                    options=PyVistaPngOptions(
+                        show_edges=show_edges or wireframe,
+                        color=color,
+                        fill_surfaces=not wireframe,
+                        all_cell_edges=wireframe,
+                    ),
+                )
+            else:
+                _render_mesh(
+                    output_path,
+                    options=MeshRenderOptions(
+                        show_edges=show_edges,
+                        color=color,
+                        fill_surfaces=not wireframe,
+                        all_cell_edges=wireframe,
+                        max_edges=max_wireframe_edges if wireframe else None,
+                    ),
+                )
+            _show_tetgen_log(output_path)
+            _show_decimation_report(output_path)
+            _show_preset_data_download(
+                selected_preset,
+                root,
+                output_path=output_path,
+                raw_files=selected_paths,
+                config_values=config_values,
+            )
         else:
             processed_options = ProcessedMeshOptions(
                 epsilon=epsilon,
