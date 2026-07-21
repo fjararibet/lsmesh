@@ -17,13 +17,25 @@ Process Flow:
 Result: 4 lines from 1 initial mandrel
 """
 
+from argparse import ArgumentParser
+
 import viennaps as ps
+
+from lsmesher import run_preset
+
+
+parser = ArgumentParser(description="Run the SAQP process emulation.")
+parser.add_argument("-D", "-DIM", dest="dim", type=int, default=2)
+parser.add_argument("filename")
+args = parser.parse_args()
+if args.dim != 2:
+    raise ValueError("SAQP Emulation only supports 2D generation")
 
 # Configuration
 ps.Logger.setLogLevel(ps.LogLevel.WARNING)
 
 # Set dimension
-ps.setDimension(2)
+ps.setDimension(args.dim)
 
 # Process parameters (all in nanometers)
 gridDelta = 0.35
@@ -51,13 +63,6 @@ def saveSurface(domain, label=""):
     global outputCounter
     print(f"Completed: {label}")
     outputCounter += 1
-
-
-def saveLevelSetInterfaces(domain, prefix="interface"):
-    for i, levelSet in enumerate(domain.getLevelSets()):
-        mesh = ps.ls.Mesh()
-        ps.ls.ToSurfaceMesh(levelSet, mesh).apply()
-        ps.ls.VTKWriter(mesh, f"{prefix}_{i}").apply()
 
 
 # Initialize domain
@@ -208,7 +213,7 @@ domain.removeMaterial(ps.Material.SiN)
 domain.removeMaterial(ps.Material.SiO2)
 print("  Spacers removed - final pattern revealed")
 saveSurface(domain, "final_pattern")
-saveLevelSetInterfaces(domain)
+run_preset(domain, dimension=args.dim)
 
 # Summary
 print("\n" + "=" * 60)

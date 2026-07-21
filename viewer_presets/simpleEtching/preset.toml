@@ -1,0 +1,6 @@
+name = "Simple Etching"
+description = "Run the ViennaPS temporal-scheme etching comparison and mesh its final domain."
+script = "simpleEtching.py"
+config = "config.txt"
+dimension = 3
+runner = "sdk"

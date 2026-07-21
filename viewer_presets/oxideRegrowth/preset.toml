@@ -1,0 +1,6 @@
+name = "Oxide Regrowth"
+description = "Generate and mesh the ViennaPS oxide regrowth example."
+script = "oxideRegrowth.py"
+config = "config.txt"
+dimension = 2
+runner = "sdk"

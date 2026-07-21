@@ -9,22 +9,21 @@
 from argparse import ArgumentParser
 import viennaps as ps
 
+from lsmesher import run_preset
 
-def saveLevelSetInterfaces(domain, prefix="interface"):
-    for i, levelSet in enumerate(domain.getLevelSets()):
-        mesh = ps.ls.Mesh()
-        ps.ls.ToSurfaceMesh(levelSet, mesh).apply()
-        ps.ls.VTKWriter(mesh, f"{prefix}_{i}").apply()
 
 # parse config file name and simulation dimension
 parser = ArgumentParser(
     prog="boschProcess",
     description="Run a Bosch process on a trench geometry.",
 )
+parser.add_argument("-D", "-DIM", dest="dim", type=int, default=3)
 parser.add_argument("filename")
 args = parser.parse_args()
+if args.dim != 3:
+    raise ValueError("Bosch Ray Tracing only supports 3D generation")
 
-ps.setDimension(3)
+ps.setDimension(args.dim)
 useGPU = ps.gpuAvailable()
 params = ps.readConfigFile(args.filename)
 
@@ -154,4 +153,4 @@ for i in range(numCycles):
     print(f"  - Etching -")
     etchProcess.apply()
 
-saveLevelSetInterfaces(geometry)
+run_preset(geometry, dimension=args.dim)

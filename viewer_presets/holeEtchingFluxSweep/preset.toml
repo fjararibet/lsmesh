@@ -1,0 +1,6 @@
+name = "Hole Etching Flux Sweep"
+description = "Run the ViennaPS SF6/O2 flux sweep and mesh its final case."
+script = "../holeEtching/testFluxes.py"
+config = "config.txt"
+dimension = 3
+runner = "sdk"

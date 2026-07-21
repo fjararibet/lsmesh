@@ -1,15 +1,20 @@
 # This example only works in 3D mode
+from argparse import ArgumentParser
+
 import viennaps as ps
 import viennaps.d3 as psd
 import viennals as ls
 from viennaps import BoundaryType, Material, AdvectionParameters, SpatialScheme
 
+from lsmesher import run_preset
 
-def saveLevelSetInterfaces(domain, prefix="interface"):
-    for i, levelSet in enumerate(domain.getLevelSets()):
-        mesh = ls.Mesh()
-        ls.d3.ToSurfaceMesh(levelSet, mesh).apply()
-        ls.VTKWriter(mesh, f"{prefix}_{i}").apply()
+
+parser = ArgumentParser(description="Run the cantilever wet etching example.")
+parser.add_argument("-D", "-DIM", dest="dim", type=int, default=3)
+parser.add_argument("filename")
+args = parser.parse_args()
+if args.dim != 3:
+    raise ValueError("Cantilever Wet Etching only supports 3D generation")
 
 maskFileName = "cantilever_mask.gds"
 
@@ -77,4 +82,4 @@ for n in range(minutes):
     # run process
     process.apply()
 
-saveLevelSetInterfaces(geometry)
+run_preset(geometry, dimension=args.dim)

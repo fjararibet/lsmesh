@@ -1,0 +1,6 @@
+name = "SAQP Emulation"
+description = "Run and mesh the ViennaPS self-aligned quadruple patterning flow."
+script = "../emulation/SAQP.py"
+config = "config.txt"
+dimension = 2
+runner = "sdk"

@@ -1,0 +1,7 @@
+name = "DRAM Wiggling"
+description = "Generate and mesh the ViennaPS DRAM wiggling example."
+script = "DRAMWiggling.py"
+config = "config.txt"
+dimension = 3
+runner = "sdk"
+assets = ["wiggle_full.gds"]

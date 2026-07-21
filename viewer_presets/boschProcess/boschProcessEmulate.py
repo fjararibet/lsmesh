@@ -1,12 +1,8 @@
 from argparse import ArgumentParser
 import viennaps as ps
 
+from lsmesher import run_preset
 
-def saveLevelSetInterfaces(domain, prefix="interface"):
-    for i, levelSet in enumerate(domain.getLevelSets()):
-        mesh = ps.ls.Mesh()
-        ps.ls.ToSurfaceMesh(levelSet, mesh).apply()
-        ps.ls.VTKWriter(mesh, f"{prefix}_{i}").apply()
 
 # parse config file name and simulation dimension
 parser = ArgumentParser(
@@ -92,4 +88,4 @@ for i in range(numCycles):
     geometry.removeTopLevelSet()
     geometry.removeStrayPoints()
 
-saveLevelSetInterfaces(geometry)
+run_preset(geometry, dimension=args.dim)

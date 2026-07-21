@@ -12,12 +12,8 @@ args = parser.parse_args()
 
 import viennaps as ps
 
+from lsmesher import run_preset
 
-def saveLevelSetInterfaces(domain, prefix="interface"):
-    for i, levelSet in enumerate(domain.getLevelSets()):
-        mesh = ps.ls.Mesh()
-        ps.ls.ToSurfaceMesh(levelSet, mesh).apply()
-        ps.ls.VTKWriter(mesh, f"{prefix}_{i}").apply()
 
 # switch between 2D and 3D mode
 if args.dim == 2:
@@ -122,4 +118,4 @@ process.setProcessDuration(params["targetEtchDepth"] / params["nitrideEtchRate"]
 process.setParameters(advParams)
 process.apply()
 
-saveLevelSetInterfaces(geometry)
+run_preset(geometry, dimension=args.dim)

@@ -1,15 +1,16 @@
+from argparse import ArgumentParser
+
 import viennaps as ps
 
+from lsmesher import run_preset
 
-ps.setDimension(3)  # Set to 3 for hole etching in 3D
+
+parser = ArgumentParser(description="Run the simple etching example.")
+parser.add_argument("-D", "-DIM", dest="dim", type=int, default=3)
+parser.add_argument("filename")
+args = parser.parse_args()
+ps.setDimension(args.dim)
 ps.Logger.setLogLevel(ps.LogLevel.INFO)
-
-
-def saveLevelSetInterfaces(domain, prefix):
-    for i, levelSet in enumerate(domain.getLevelSets()):
-        mesh = ps.ls.Mesh()
-        ps.ls.ToSurfaceMesh(levelSet, mesh).apply()
-        ps.ls.VTKWriter(mesh, f"{prefix}_interface_{i}").apply()
 
 
 def main():
@@ -59,14 +60,16 @@ def main():
         ps.Logger.getInstance().addInfo(f"Running simulation: {suffix}").print()
         process.apply()
 
-        saveLevelSetInterfaces(domain, f"simpleEtching_{suffix}")
+        return domain
 
     run_simulation(ps.util.convertTemporalScheme("FORWARD_EULER"), False)
     run_simulation(ps.util.convertTemporalScheme("RUNGE_KUTTA_2ND_ORDER"), False)
     run_simulation(ps.util.convertTemporalScheme("RUNGE_KUTTA_2ND_ORDER"), True)
     run_simulation(ps.util.convertTemporalScheme("RUNGE_KUTTA_3RD_ORDER"), False)
-    run_simulation(ps.util.convertTemporalScheme("RUNGE_KUTTA_3RD_ORDER"), True)
+    return run_simulation(
+        ps.util.convertTemporalScheme("RUNGE_KUTTA_3RD_ORDER"), True
+    )
 
 
 if __name__ == "__main__":
-    main()
+    run_preset(main(), dimension=args.dim)

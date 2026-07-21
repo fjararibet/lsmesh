@@ -1,13 +1,18 @@
+from argparse import ArgumentParser
+
 import viennaps as ps
 
+from lsmesher import run_preset
 
-def saveLevelSetInterfaces(domain, prefix="interface"):
-    for i, levelSet in enumerate(domain.getLevelSets()):
-        mesh = ps.ls.Mesh()
-        ps.ls.ToSurfaceMesh(levelSet, mesh).apply()
-        ps.ls.VTKWriter(mesh, f"{prefix}_{i}").apply()
 
-ps.setDimension(3)
+parser = ArgumentParser(description="Build a multi-material domain from GDS.")
+parser.add_argument("-D", "-DIM", dest="dim", type=int, default=3)
+parser.add_argument("filename")
+args = parser.parse_args()
+if args.dim != 3:
+    raise ValueError("GDS Reader only supports 3D generation")
+
+ps.setDimension(args.dim)
 ps.Logger.setLogLevel(ps.LogLevel.DEBUG)
 
 gridDelta = 0.01
@@ -57,4 +62,4 @@ geometry.insertNextLevelSetAsMaterial(layer4, ps.Material.W)
 layer5 = mask.layerToLevelSet(5, 0.0, 0.2, True)
 geometry.insertNextLevelSetAsMaterial(layer5, ps.Material.PolySi)
 
-saveLevelSetInterfaces(geometry)
+run_preset(geometry, dimension=args.dim)

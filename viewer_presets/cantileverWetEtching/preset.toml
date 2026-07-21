@@ -1,0 +1,7 @@
+name = "Cantilever Wet Etching"
+description = "Generate and mesh the ViennaPS crystalline cantilever wet etch."
+script = "cantileverWetEtching.py"
+config = "config.txt"
+dimension = 3
+runner = "sdk"
+assets = ["cantilever_mask.gds"]

@@ -61,21 +61,37 @@ def test_all_project_presets_use_sdk_generators(monkeypatch):
     presets = _presets(Path.cwd())
 
     assert {preset.name for preset in presets} == {
+        "Atomic Layer Deposition",
         "Blazed Gratings Etching",
         "Bosch Process",
+        "Bosch Process Emulation",
+        "Bosch Process Ray Tracing",
+        "Cantilever Wet Etching",
+        "DRAM Wiggling",
         "Faraday Cage Etching",
+        "FinFET Emulation",
+        "GDS Reader",
         "Hole Etching",
+        "Hole Etching Flux Sweep",
         "Ion Beam Etching",
         "Multi TEOS",
+        "Oxide Regrowth",
+        "SAQP Emulation",
         "Selective Epitaxy",
+        "SiGe Selective Etching",
+        "Simple Etching",
         "Single TEOS",
+        "Sputter Deposition 2D",
+        "Sputter Deposition 3D",
         "Stack Etching",
+        "Stacked Nanowire Emulation",
         "Trench Deposition",
         "Trench Deposition Geometric",
     }
     assert all(preset.runner == "sdk" for preset in presets)
     assert all(not preset.files for preset in presets)
     assert all(preset.script and preset.config for preset in presets)
+    assert all(asset.is_file() for preset in presets for asset in preset.assets)
 
 
 def test_preset_dimension_detects_2d_fixture():
@@ -141,12 +157,15 @@ description = "Generate case."
 script = "case.py"
 config = "config.txt"
 dimension = 3
+runner = "sdk"
+assets = ["layout.gds"]
 original_outputs = ["original_mesh.vtp", "original_mesh_volume.vtu"]
 """,
         encoding="utf-8",
     )
     (preset_dir / "case.py").write_text("", encoding="utf-8")
     (preset_dir / "config.txt").write_text("gridDelta=1\n", encoding="utf-8")
+    (preset_dir / "layout.gds").write_text("layout", encoding="utf-8")
     monkeypatch.setenv(PRESETS_DIR_ENV, str(presets_dir))
 
     presets = _presets(tmp_path)
@@ -156,6 +175,8 @@ original_outputs = ["original_mesh.vtp", "original_mesh_volume.vtu"]
     assert presets[0].dimension == 3
     assert presets[0].script == preset_dir / "case.py"
     assert presets[0].config == preset_dir / "config.txt"
+    assert presets[0].runner == "sdk"
+    assert presets[0].assets == (preset_dir / "layout.gds",)
     assert presets[0].original_patterns == (
         "original_mesh.vtp",
         "original_mesh_volume.vtu",

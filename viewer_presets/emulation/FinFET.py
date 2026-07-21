@@ -1,19 +1,23 @@
+from argparse import ArgumentParser
+
 import viennaps as ps
 
-ps.setDimension(3)
+from lsmesher import run_preset
+
+
+parser = ArgumentParser(description="Run the FinFET process emulation.")
+parser.add_argument("-D", "-DIM", dest="dim", type=int, default=3)
+parser.add_argument("filename")
+args = parser.parse_args()
+if args.dim != 3:
+    raise ValueError("FinFET Emulation only supports 3D generation")
+ps.setDimension(args.dim)
 surfaceNum = 0
 
 
 def writeSurface(domain):
     global surfaceNum
     surfaceNum += 1
-
-
-def saveLevelSetInterfaces(domain, prefix="interface"):
-    for i, levelSet in enumerate(domain.getLevelSets()):
-        mesh = ps.ls.Mesh()
-        ps.ls.ToSurfaceMesh(levelSet, mesh).apply()
-        ps.ls.VTKWriter(mesh, f"{prefix}_{i}").apply()
 
 
 ps.Logger.setLogLevel(ps.LogLevel.ERROR)
@@ -227,4 +231,4 @@ writeSurface(domain)
 ps.Planarize(domain, 90.0).apply()
 writeSurface(domain)
 
-saveLevelSetInterfaces(domain)
+run_preset(domain, dimension=args.dim)

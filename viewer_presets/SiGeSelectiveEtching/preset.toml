@@ -1,0 +1,6 @@
+name = "SiGe Selective Etching"
+description = "Generate and mesh the ViennaPS selective SiGe stack etch."
+script = "SiGeEtching.py"
+config = "config_CF4O2.txt"
+dimension = 2
+runner = "sdk"

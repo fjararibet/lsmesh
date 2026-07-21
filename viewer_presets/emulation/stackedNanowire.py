@@ -1,15 +1,20 @@
+from argparse import ArgumentParser
+
 import viennaps as ps
 
-ps.setDimension(3)
+from lsmesher import run_preset
+
+
+parser = ArgumentParser(description="Run the stacked nanowire process emulation.")
+parser.add_argument("-D", "-DIM", dest="dim", type=int, default=3)
+parser.add_argument("filename")
+args = parser.parse_args()
+if args.dim != 3:
+    raise ValueError("Stacked Nanowire Emulation only supports 3D generation")
+ps.setDimension(args.dim)
 ps.Logger.setLogLevel(ps.LogLevel.ERROR)
 n = 0
 
-
-def saveLevelSetInterfaces(domain, prefix="interface"):
-    for i, levelSet in enumerate(domain.getLevelSets()):
-        mesh = ps.ls.Mesh()
-        ps.ls.ToSurfaceMesh(levelSet, mesh).apply()
-        ps.ls.VTKWriter(mesh, f"{prefix}_{i}").apply()
 
 # domain
 bounds = [0.0, 70.0, 0.0, 100.0, 0.0, 70.0]
@@ -181,4 +186,4 @@ ps.Process(domain, growth, 20.0).apply()
 
 ps.Planarize(domain, 47.5).apply()
 
-saveLevelSetInterfaces(domain)
+run_preset(domain, dimension=args.dim)

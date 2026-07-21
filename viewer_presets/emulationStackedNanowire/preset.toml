@@ -1,0 +1,6 @@
+name = "Stacked Nanowire Emulation"
+description = "Run and mesh the complete ViennaPS stacked nanowire process flow."
+script = "../emulation/stackedNanowire.py"
+config = "config.txt"
+dimension = 3
+runner = "sdk"

@@ -1,12 +1,8 @@
 import viennaps as ps
 from argparse import ArgumentParser
 
+from lsmesher import run_preset
 
-def saveLevelSetInterfaces(domain, prefix="interface"):
-    for i, levelSet in enumerate(domain.getLevelSets()):
-        mesh = ps.ls.Mesh()
-        ps.ls.ToSurfaceMesh(levelSet, mesh).apply()
-        ps.ls.VTKWriter(mesh, f"{prefix}_{i}").apply()
 
 # parse config file name and simulation dimension
 parser = ArgumentParser(
@@ -14,9 +10,12 @@ parser = ArgumentParser(
     description="Run a DRAM etching process which results in AA wiggling.",
 )
 parser.add_argument("filename")
+parser.add_argument("-D", "-DIM", dest="dim", type=int, default=3)
 args = parser.parse_args()
 
-ps.setDimension(3)
+if args.dim != 3:
+    raise ValueError("DRAM Wiggling only supports 3D generation")
+ps.setDimension(args.dim)
 
 gridDelta = 0.01 * (1.0 + 1e-12)
 boundaryConds = [
@@ -81,4 +80,4 @@ for i in range(numSteps):
     # run the process
     process.apply()
 
-saveLevelSetInterfaces(geometry, f"DRAM_Final_{fluxEngineStr}_interface")
+run_preset(geometry, dimension=args.dim)

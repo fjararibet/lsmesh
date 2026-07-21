@@ -1,14 +1,19 @@
+from argparse import ArgumentParser
+
 import viennaps as ps
 from SiGeStackGeometry import CreateGeometry
 
+from lsmesher import run_preset
 
-def saveLevelSetInterfaces(domain, prefix="interface"):
-    for i, levelSet in enumerate(domain.getLevelSets()):
-        mesh = ps.ls.Mesh()
-        ps.ls.ToSurfaceMesh(levelSet, mesh).apply()
-        ps.ls.VTKWriter(mesh, f"{prefix}_{i}").apply()
 
-ps.setDimension(2)
+parser = ArgumentParser(description="Run selective SiGe stack etching.")
+parser.add_argument("-D", "-DIM", dest="dim", type=int, default=2)
+parser.add_argument("filename")
+args = parser.parse_args()
+if args.dim != 2:
+    raise ValueError("SiGe Selective Etching only supports 2D generation")
+
+ps.setDimension(args.dim)
 ps.setNumThreads(16)
 
 # create initial geometry
@@ -27,8 +32,7 @@ paramDict = {
 }
 geometry = CreateGeometry(paramDict)
 
-config_file = "config_CF4O2.txt"
-params = ps.readConfigFile(config_file)
+params = ps.readConfigFile(args.filename)
 
 ps.Logger.setLogLevel(ps.LogLevel.INFO)
 
@@ -96,4 +100,4 @@ process.setParameters(advParams)
 # run the process
 process.apply()
 
-saveLevelSetInterfaces(geometry)
+run_preset(geometry, dimension=args.dim)

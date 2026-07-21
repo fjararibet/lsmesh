@@ -1,0 +1,6 @@
+name = "Atomic Layer Deposition"
+description = "Generate and mesh the ViennaPS single-particle ALD example."
+script = "atomicLayerDeposition.py"
+config = "config.txt"
+dimension = 2
+runner = "sdk"

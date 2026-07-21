@@ -2,11 +2,14 @@ from argparse import ArgumentParser
 import numpy as np
 import viennaps as ps
 
+from lsmesher import run_preset
+
 # parse config file name and simulation dimension
 parser = ArgumentParser(
     prog="testFluxes", description="Test different flux configurations."
 )
 parser.add_argument("-D", "-DIM", dest="dim", type=int, default=2)
+parser.add_argument("filename")
 args = parser.parse_args()
 
 
@@ -102,11 +105,5 @@ for i in range(len(yo2)):
     process.setProcessModel(model)
     process.apply()
 
-    # save mask
-    mask = geometry.getLevelSets()[0]
-    mesh = ps.ls.Mesh()
-    ps.ls.ToSurfaceMesh(mask, mesh).apply()
-    ps.ls.VTKWriter(mesh, "mask_y{:.2f}.vtp".format(yo2[i])).apply()
 
-    geometry.saveSurfaceMesh("hole_y{:.2f}.vtp".format(yo2[i]), True)
-    geometry.saveVolumeMesh("hole_y{:.2f}".format(yo2[i]))
+run_preset(geometry, dimension=args.dim)

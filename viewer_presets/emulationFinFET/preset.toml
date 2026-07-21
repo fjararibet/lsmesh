@@ -1,0 +1,6 @@
+name = "FinFET Emulation"
+description = "Run and mesh the complete ViennaPS FinFET process emulation."
+script = "../emulation/FinFET.py"
+config = "config.txt"
+dimension = 3
+runner = "sdk"

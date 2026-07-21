@@ -1,0 +1,6 @@
+name = "Bosch Process Ray Tracing"
+description = "Generate and mesh the ViennaPS 3D ray-traced Bosch process."
+script = "../boschProcess/boschProcessRayTracing.py"
+config = "../boschProcess/configBoschRayTracing.txt"
+dimension = 3
+runner = "sdk"

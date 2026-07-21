@@ -1,0 +1,7 @@
+name = "GDS Reader"
+description = "Build and mesh the ViennaPS multi-layer GDS example."
+script = "GDSReader.py"
+config = "config.txt"
+dimension = 3
+runner = "sdk"
+assets = ["myTest.gds"]

@@ -1,0 +1,6 @@
+name = "Bosch Process Emulation"
+description = "Generate and mesh the geometric ViennaPS Bosch process emulation."
+script = "../boschProcess/boschProcessEmulate.py"
+config = "../boschProcess/config.txt"
+dimension = 3
+runner = "sdk"

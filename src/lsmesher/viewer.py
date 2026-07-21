@@ -47,6 +47,7 @@ class Preset:
     directory: Path | None = None
     original_patterns: tuple[str, ...] = ()
     runner: str = "files"
+    assets: tuple[Path, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -145,6 +146,9 @@ def _preset_from_metadata(preset_dir: Path) -> Preset | None:
     original_patterns = metadata.get("original_outputs", ())
     if isinstance(original_patterns, str):
         original_patterns = (original_patterns,)
+    asset_names = metadata.get("assets", ())
+    if isinstance(asset_names, str):
+        asset_names = (asset_names,)
     return Preset(
         name=str(
             metadata.get(
@@ -160,6 +164,7 @@ def _preset_from_metadata(preset_dir: Path) -> Preset | None:
         directory=preset_dir,
         original_patterns=tuple(str(pattern) for pattern in original_patterns),
         runner=str(metadata.get("runner", "files")),
+        assets=tuple(preset_dir / str(asset) for asset in asset_names),
     )
 
 
@@ -214,6 +219,7 @@ def _presets(root: Path) -> list[Preset]:
                     directory=metadata_preset.directory,
                     original_patterns=metadata_preset.original_patterns,
                     runner=metadata_preset.runner,
+                    assets=metadata_preset.assets,
                 )
         presets.append(metadata_preset)
     return presets
@@ -356,6 +362,11 @@ def _run_sdk_preset(
     workdir = _prepare_output_dir(output_dir)
     config_path = workdir / preset.config.name
     _write_config_with_values(preset.config, config_path, config_values)
+    for asset in preset.assets:
+        if not asset.is_file():
+            msg = f"Preset asset does not exist: {asset}"
+            raise FileNotFoundError(msg)
+        shutil.copy2(asset, workdir / asset.name)
     output_suffix = ".vtu" if options.run_mesher else ".vtp"
     output_path = workdir / f"mesh{output_suffix}"
     manifest_path = workdir / "lsmesher-preset-result.json"
