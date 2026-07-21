@@ -83,6 +83,8 @@ After external meshing, lsmesher requires:
 
 This complements the pre-mesher structural validation. TetGen returning success
 is not sufficient if a material disappeared or a zero/inverted element exists.
+ViennaPS IDs, including material `0`, are preserved through a reversible
+external-mesher encoding described in [Material Identities](material-identities.md).
 
 The current quality measure is the normalized mean-ratio shape quality. It is
 `1` for an equilateral triangle or regular tetrahedron and approaches `0` for a

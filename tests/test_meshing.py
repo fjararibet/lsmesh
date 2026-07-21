@@ -19,7 +19,12 @@ from lsmesher import (
     validate,
     write,
 )
-from lsmesher.meshing import _automatic_options, _element_quality
+from lsmesher.meshing import (
+    _automatic_options,
+    _decode_material_ids,
+    _element_quality,
+    _encode_material_ids,
+)
 from lsmesher.pipeline_3d import DecimationReport
 from lsmesher.results import MaterialInfo
 
@@ -88,6 +93,13 @@ def test_automatic_options_scale_with_characteristic_length():
     assert safer.build.decimation.target_edge_length < 0.75
     assert safer.build.decimation.optimal_placement is False
     assert recovery.build.decimation.enabled is False
+
+
+def test_material_encoding_is_positive_reversible_and_unifies_repeats():
+    encoded, original_by_encoded = _encode_material_ids((10, 0, 0, -4))
+
+    assert encoded == (1, 2, 3, 4)
+    assert _decode_material_ids(encoded, original_by_encoded) == (10, 0, 0, -4)
 
 
 def test_quality_report_detects_missing_material():

@@ -31,7 +31,7 @@ from lsmesher.errors import (
     TetGenError,
     TriangleError,
 )
-from lsmesher.geometry_types import Face
+from lsmesher.geometry_types import Face, Region3D
 from lsmesher.pipeline_2d import geometry_2d_to_poly_text, read_2d_layers
 from lsmesher.pipeline_3d import (
     DecimationOptions3D,
@@ -667,6 +667,26 @@ def _tetgen_switches(options: MesherOptions) -> str:
     return f"-p{quality}AkR{volume}"
 
 
+def _encode_material_ids(
+    material_ids: Sequence[int],
+) -> tuple[tuple[int, ...], dict[int, int]]:
+    """Replace application IDs with positive, consecutive mesher attributes."""
+    original_by_encoded = {
+        index + 1: material_id for index, material_id in enumerate(material_ids)
+    }
+    return tuple(original_by_encoded), original_by_encoded
+
+
+def _decode_material_ids(
+    material_ids: Sequence[int], original_by_encoded: dict[int, int]
+) -> tuple[int, ...]:
+    try:
+        return tuple(original_by_encoded[material_id] for material_id in material_ids)
+    except KeyError as error:
+        msg = f"Mesher returned unknown material attribute {error.args[0]}"
+        raise InvalidGeometryError(msg) from error
+
+
 def _mesh_2d(
     geometry: Geometry2D,
     output: Path,
@@ -685,7 +705,12 @@ def _mesh_2d(
 
     with tempfile.TemporaryDirectory(prefix="lsmesher-") as directory:
         poly_path = Path(directory) / "mesh.poly"
-        write(geometry, poly_path)
+        original_ids = geometry.attribute_ids or tuple(
+            range(1, len(geometry.attributes) + 1)
+        )
+        encoded_ids, original_by_encoded = _encode_material_ids(original_ids)
+        mesher_geometry = replace(geometry, attribute_ids=encoded_ids)
+        write(mesher_geometry, poly_path)
         command = (str(TRIANGLE), _triangle_switches(config.mesher), str(poly_path))
         if not TRIANGLE.exists():
             mesher_name = "triangle"
@@ -703,7 +728,10 @@ def _mesh_2d(
                 stderr=completed.stderr,
                 log_path=log_path,
             )
-        points, triangles, attributes = read_triangle_mesh(poly_path.with_suffix(""))
+        points, triangles, encoded_attributes = read_triangle_mesh(
+            poly_path.with_suffix("")
+        )
+        attributes = _decode_material_ids(encoded_attributes, original_by_encoded)
         triangle_mesh = TriangleMesh2D(
             tuple(points), tuple(triangles), tuple(attributes)
         )
@@ -743,7 +771,19 @@ def _mesh_3d(  # noqa: PLR0913
         raise MesherNotFoundError(mesher_name)
     with tempfile.TemporaryDirectory(prefix="lsmesher-") as directory:
         poly_path = Path(directory) / "mesh.poly"
-        write(geometry, poly_path)
+        encoded_ids, original_by_encoded = _encode_material_ids(
+            tuple(region.material for region in geometry.regions)
+        )
+        mesher_geometry = replace(
+            geometry,
+            regions=tuple(
+                Region3D(region.point, material_id)
+                for region, material_id in zip(
+                    geometry.regions, encoded_ids, strict=True
+                )
+            ),
+        )
+        write(mesher_geometry, poly_path)
         command = (executable, _tetgen_switches(config.mesher), str(poly_path))
         completed = subprocess.run(command, capture_output=True, text=True, check=False)
         log_path = output.with_name(f"{output.stem}.tetgen.log")
@@ -758,7 +798,12 @@ def _mesh_3d(  # noqa: PLR0913
                 stderr=completed.stderr,
                 log_path=log_path,
             )
-        points, tetrahedra, attributes = read_tetgen_mesh(poly_path.with_suffix(""))
+        points, tetrahedra, encoded_attributes = read_tetgen_mesh(
+            poly_path.with_suffix("")
+        )
+        attributes = _decode_material_ids(
+            encoded_attributes, original_by_encoded
+        )
         tetrahedral_mesh = TetrahedralMesh3D(
             tuple(points), tuple(tetrahedra), tuple(attributes)
         )

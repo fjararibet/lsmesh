@@ -778,19 +778,19 @@ def _projected_area(surface: Surface3D, face: Face) -> float:
     return abs(area) / 2
 
 
-def _component_region_point(
+def _component_region_point(  # noqa: PLR0913
     component: Sequence[Face],
     surface: Surface3D,
     hit_triangles: np.ndarray,
     floor_z: float,
     *,
     min_gap: float,
+    bidirectional: bool = False,
 ) -> Point3D:
-    """Sample an interior point below one component of unique faces.
+    """Sample an interior point adjacent to one component of unique faces.
 
-    Casts a vertical ray down from a face centroid and takes the midpoint to
-    the nearest surface crossing below it, so the sample stays strictly inside
-    the material volume capped by the component.
+    Nested interfaces may bound the next material above or below a local face,
+    so upper layers use the nearest separated crossing in either direction.
     """
     candidates = sorted(
         component,
@@ -801,18 +801,22 @@ def _component_region_point(
     best: tuple[float, float, float, float] | None = None
     for face in candidates:
         centroid = _face_centroid(surface, face)
-        hits = [
-            z
-            for z in _vertical_hits(hit_triangles, centroid.x, centroid.y)
-            if z < centroid.z - tolerance
-        ]
-        z_low = max(hits, default=floor_z)
-        gap = centroid.z - z_low
+        hits = _vertical_hits(hit_triangles, centroid.x, centroid.y)
+        if bidirectional:
+            separated = [z for z in hits if abs(z - centroid.z) > tolerance]
+            other_z = (
+                min(separated, key=lambda z: abs(z - centroid.z))
+                if separated
+                else floor_z
+            )
+        else:
+            below = [z for z in hits if z < centroid.z - tolerance]
+            other_z = max(below, default=floor_z)
+        gap = abs(centroid.z - other_z)
         if best is None or gap > best[0]:
-            best = (gap, centroid.x, centroid.y, (centroid.z + z_low) / 2)
+            best = (gap, centroid.x, centroid.y, (centroid.z + other_z) / 2)
         if best[0] >= min_gap:
             break
-
     if best is None:
         msg = "Cannot sample region point: component has no faces."
         raise ValueError(msg)
@@ -851,11 +855,7 @@ def collect_3d_regions(
     regions: list[Region3D] = []
     for index, surface in enumerate(surfaces):
         lower = surfaces[index - 1] if index else None
-        hit_triangles = (
-            np.concatenate((triangles[index], triangles[index - 1]))
-            if index
-            else triangles[index]
-        )
+        hit_triangles = triangles[index - 1] if index else triangles[index]
         for component in _face_components(_unique_faces(surface, lower)):
             point = _component_region_point(
                 component,
@@ -863,6 +863,7 @@ def collect_3d_regions(
                 hit_triangles,
                 floor_z,
                 min_gap=min_gap,
+                bidirectional=index > 0,
             )
             regions.append(Region3D(point=point, material=resolved_ids[index]))
     return tuple(regions)
