@@ -437,18 +437,16 @@ def test_run_2d_polygon_preview_writes_line_vtp():
     assert mesh.lines.size > 0
 
 
-def test_run_pipeline_returns_tetgen_output_for_meshed_3d_vtp(tmp_path, monkeypatch):
-    """3D VTP preview displays TetGen output when external meshing is enabled."""
+def test_run_pipeline_writes_meshed_3d_vtu_directly(tmp_path, monkeypatch):
+    """A meshed 3D preview requests the final VTU directly."""
     input_path = Path("tests/end_to_end/fixtures/3d/interface_1.vtp")
-    output_path = tmp_path / "mesh.vtp"
-    tetgen_path = tmp_path / "mesh.1.vtu"
+    output_path = tmp_path / "mesh.vtu"
     commands: list[list[str]] = []
 
     def fake_run(command, **_kwargs: object):
         commands.append(command)
         out = Path(command[command.index("--out") + 1])
-        out.write_text("surface", encoding="utf-8")
-        tetgen_path.write_text("tetgen", encoding="utf-8")
+        out.write_text("tetgen", encoding="utf-8")
         return subprocess.CompletedProcess(command, 0, stdout="", stderr="")
 
     monkeypatch.setattr("lsmesher.viewer.subprocess.run", fake_run)
@@ -456,7 +454,7 @@ def test_run_pipeline_returns_tetgen_output_for_meshed_3d_vtp(tmp_path, monkeypa
     result = _run_pipeline(
         [input_path],
         epsilon=1e-6,
-        output_format="vtp",
+        output_format="vtu",
         run_mesher=True,
         output_path=output_path,
         decimation=DecimationOptions3D(target_faces=1400),
@@ -469,10 +467,11 @@ def test_run_pipeline_returns_tetgen_output_for_meshed_3d_vtp(tmp_path, monkeypa
         ),
     )
 
-    assert result == tetgen_path
+    assert result == output_path
     (command,) = commands
     assert command[:4] == [sys.executable, "-m", "lsmesher.cli", "mesh"]
     assert str(input_path) in command
+    assert command[command.index("--format") + 1] == "vtu"
     assert command[command.index("--decimate-target-faces") + 1] == "1400"
     assert command[command.index("--tetgen-quality-ratio") + 1] == "1.4"
     assert command[command.index("--tetgen-min-dihedral") + 1] == "15.0"
@@ -520,20 +519,19 @@ def test_viewer_import_keeps_pymeshlab_out_of_the_process():
     assert result.returncode == 0, result.stderr
 
 
-def test_write_processed_mesh_returns_tetgen_output_for_meshed_3d_vtp(
+def test_write_processed_mesh_returns_requested_meshed_3d_vtu(
     tmp_path,
     monkeypatch,
 ):
     """Processed mesh output is freshly written to a reachable directory."""
     input_path = Path("tests/end_to_end/fixtures/3d/interface_1.vtp")
     output_dir = tmp_path / "viewer_outputs" / "case" / "processed_mesh"
-    output_path = output_dir / "mesh.vtp"
-    tetgen_path = output_path.with_name("mesh.1.vtu")
+    output_path = output_dir / "mesh.vtu"
 
     def run_pipeline(input_paths, *, output_path, **_kwargs: object):
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        tetgen_path.write_text("tetgen", encoding="utf-8")
-        return tetgen_path
+        output_path.write_text("tetgen", encoding="utf-8")
+        return output_path
 
     monkeypatch.setattr("lsmesher.viewer._run_pipeline", run_pipeline)
 
@@ -541,13 +539,13 @@ def test_write_processed_mesh_returns_tetgen_output_for_meshed_3d_vtp(
         [input_path],
         options=ProcessedMeshOptions(
             epsilon=1e-6,
-            output_format="vtp",
+            output_format="vtu",
             run_mesher=True,
         ),
         output_dir=output_dir,
     )
 
-    assert result == tetgen_path
+    assert result == output_path
 
 
 def test_processed_tetgen_log_path_strips_tetgen_suffixes():

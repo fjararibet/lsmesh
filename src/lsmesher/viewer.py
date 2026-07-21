@@ -983,9 +983,6 @@ def _run_pipeline(  # noqa: PLR0913
     "malloc_consolidate" errors). A subprocess also turns any native crash
     into a readable error instead of killing the viewer.
     """
-    dimension = detect_dimension(str(input_paths[0]))
-    if dimension == 3 and output_format == "vtu":
-        output_format = "vtp"
     suffix = f".{output_format}"
     output_path = (
         output_path
@@ -1023,14 +1020,6 @@ def _run_pipeline(  # noqa: PLR0913
             if part
         )
         raise RuntimeError(message)
-
-    if dimension == 3 and run_mesher and output_format == "vtp":
-        tetgen_vtu_output = output_path.with_name(f"{output_path.stem}.1.vtu")
-        if tetgen_vtu_output.exists():
-            return tetgen_vtu_output
-        tetgen_output = output_path.with_name(f"{output_path.stem}.1.vtk")
-        if tetgen_output.exists():
-            return tetgen_output
 
     return output_path
 
@@ -1701,13 +1690,13 @@ def app() -> None:  # noqa: C901, PLR0912, PLR0915
                 step=1_000,
                 help="Higher values show more edges but can make Plotly/Streamlit slow on large meshes.",
             )
-        output_format = "vtu" if st.session_state["preset_dimension"] == 2 else "vtp"
         run_mesher = st.toggle(
             "Run mesher",
             value=True,
             help="Runs Triangle for 2D presets and TetGen for 3D presets.",
         )
         dimension = st.session_state["preset_dimension"] or expected_dimension
+        output_format = "vtu" if dimension == 2 or run_mesher else "vtp"
         mesher = _mesher_quality_sidebar_controls(
             dimension, MesherOptions(), selected_paths
         )
