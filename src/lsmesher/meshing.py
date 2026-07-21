@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+import json
 import shutil
 import subprocess
 import tempfile
 from collections.abc import Iterator, Sequence
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Literal, TypeAlias, cast, overload
 
@@ -15,6 +16,8 @@ from lsmesher.api import (
     BuildOptions,
     Dimension,
     ViennaPSDomain,
+    build_3d_from_files_with_report,
+    build_3d_from_viennaps_with_report,
     build_from_files,
     build_from_viennaps,
     materials_from_viennaps,
@@ -27,7 +30,11 @@ from lsmesher.errors import (
 )
 from lsmesher.geometry_types import Face
 from lsmesher.pipeline_2d import geometry_2d_to_poly_text
-from lsmesher.pipeline_3d import surface_3d_to_off_text, surface_3d_to_poly_text
+from lsmesher.pipeline_3d import (
+    DecimationReport,
+    surface_3d_to_off_text,
+    surface_3d_to_poly_text,
+)
 from lsmesher.pipeline_types import Geometry2D, Surface3D, TriangleMesh2D
 from lsmesher.polygon_io_2d import (
     read_triangle_mesh,
@@ -192,30 +199,40 @@ def mesh(
     """Build, validate, mesh, and write a ViennaPS geometry."""
     config = options or MeshingOptions()
     materials = ()
+    decimation_report = None
     if isinstance(source, (Geometry2D, Surface3D)):
         geometry = source
     elif hasattr(source, "getLevelSets"):
         domain = cast("ViennaPSDomain", source)
-        geometry = (
-            build_from_viennaps(domain, 2, options=config.build)
-            if dimension == 2
-            else build_from_viennaps(domain, 3, options=config.build)
-        )
+        if dimension == 2:
+            geometry = build_from_viennaps(domain, 2, options=config.build)
+        else:
+            geometry, decimation_report = build_3d_from_viennaps_with_report(
+                domain, options=config.build
+            )
         materials = materials_from_viennaps(domain)
     else:
         files = cast("Sequence[str | Path]", source)
-        geometry = (
-            build_from_files(files, 2, options=config.build)
-            if dimension == 2
-            else build_from_files(files, 3, options=config.build)
-        )
+        if dimension == 2:
+            geometry = build_from_files(files, 2, options=config.build)
+        else:
+            geometry, decimation_report = build_3d_from_files_with_report(
+                files, options=config.build
+            )
 
     report = validate(geometry)
     if config.validate:
         report.raise_for_errors()
     if isinstance(geometry, Geometry2D):
         return _mesh_2d(geometry, Path(output), config, materials, report)
-    return _mesh_3d(geometry, Path(output), config, materials, report)
+    return _mesh_3d(
+        geometry,
+        Path(output),
+        config,
+        materials,
+        report,
+        decimation_report,
+    )
 
 
 def _triangle_switches(options: MesherOptions) -> str:
@@ -278,21 +295,31 @@ def _mesh_2d(
     return MeshResult2D(geometry, triangle_mesh, materials, (output,), log_path, report)
 
 
-def _mesh_3d(
+def _mesh_3d(  # noqa: PLR0913
     geometry: Surface3D,
     output: Path,
     config: MeshingOptions,
     materials: tuple[MaterialInfo, ...],
     report: ValidationReport,
+    decimation_report: DecimationReport | None,
 ) -> MeshResult3D:
     format_name = output_format(output)
+    report_path = _write_decimation_report(output, decimation_report)
+    output_paths = (output,) if report_path is None else (output, report_path)
     if not config.run_mesher:
         try:
             write(geometry, output)
         except ValueError as error:
             msg = f"{format_name.upper()} output requires TetGen; remove --no-mesh"
             raise InvalidGeometryError(msg) from error
-        return MeshResult3D(geometry, None, materials, (output,), validation=report)
+        return MeshResult3D(
+            geometry,
+            None,
+            materials,
+            output_paths,
+            validation=report,
+            decimation=decimation_report,
+        )
 
     executable = shutil.which("tetgen")
     if executable is None:
@@ -321,8 +348,24 @@ def _mesh_3d(
         )
         write(tetrahedral_mesh if format_name == "vtu" else geometry, output)
     return MeshResult3D(
-        geometry, tetrahedral_mesh, materials, (output,), log_path, report
+        geometry,
+        tetrahedral_mesh,
+        materials,
+        output_paths,
+        log_path,
+        report,
+        decimation_report,
     )
+
+
+def _write_decimation_report(
+    output: Path, report: DecimationReport | None
+) -> Path | None:
+    if report is None:
+        return None
+    path = output.with_name(f"{output.stem}.decimation.json")
+    path.write_text(json.dumps(asdict(report), indent=2) + "\n", encoding="utf-8")
+    return path
 
 
 def _write_log(

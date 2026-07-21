@@ -9,6 +9,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from lsmesher.geometry_types import Face, Point3D
+    from lsmesher.pipeline_3d import DecimationReport
     from lsmesher.pipeline_types import Geometry2D, Surface3D, TriangleMesh2D
     from lsmesher.validation import ValidationReport
 
@@ -53,6 +54,7 @@ class MeshResult3D:
     output_paths: tuple[Path, ...] = ()
     log_path: Path | None = None
     validation: ValidationReport | None = None
+    decimation: DecimationReport | None = None
 
 
 MeshResult: TypeAlias = MeshResult2D | MeshResult3D

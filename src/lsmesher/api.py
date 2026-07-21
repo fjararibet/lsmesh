@@ -17,7 +17,9 @@ from lsmesher.pipeline_3d import (
     BOTTOM_MARGIN,
     SEAM_PROTECTION_RINGS,
     DecimationOptions3D,
+    DecimationReport,
     build_3d_surface,
+    build_3d_surface_with_report,
     read_3d_surfaces,
 )
 from lsmesher.pipeline_types import Geometry2D, Layer2D, Surface3D
@@ -217,6 +219,33 @@ def build_from_viennaps(
             sampler=_sampler(config),
         )
     return build_3d_surface(
+        tuple(surface_from_viennals(mesh) for mesh in meshes),
+        decimation=config.decimation,
+        bottom_margin=config.bottom_margin,
+        seam_protection_rings=config.seam_protection_rings,
+    )
+
+
+def build_3d_from_files_with_report(
+    files: Sequence[str | Path], *, options: BuildOptions | None = None
+) -> tuple[Surface3D, DecimationReport | None]:
+    """Build 3D file inputs and retain decimation statistics."""
+    config = options or BuildOptions()
+    return build_3d_surface_with_report(
+        read_3d_surfaces(files),
+        decimation=config.decimation,
+        bottom_margin=config.bottom_margin,
+        seam_protection_rings=config.seam_protection_rings,
+    )
+
+
+def build_3d_from_viennaps_with_report(
+    domain: ViennaPSDomain, *, options: BuildOptions | None = None
+) -> tuple[Surface3D, DecimationReport | None]:
+    """Build a 3D ViennaPS domain and retain decimation statistics."""
+    config = options or BuildOptions()
+    meshes = _viennals_meshes(domain, 3)
+    return build_3d_surface_with_report(
         tuple(surface_from_viennals(mesh) for mesh in meshes),
         decimation=config.decimation,
         bottom_margin=config.bottom_margin,

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import io
+import json
 import os
 import re
 import shutil
@@ -24,7 +25,7 @@ from streamlit.web.cli import main as streamlit_main
 from lsmesher.cli import MesherOptions, detect_dimension
 from lsmesher.geometry_types import Face
 from lsmesher.pipeline_2d import build_2d_poly_geometry, read_2d_layers
-from lsmesher.pipeline_3d import DecimationOptions3D
+from lsmesher.pipeline_3d import DEFAULT_TARGET_TOTAL_FACES, DecimationOptions3D
 from lsmesher.polygon_io_2d import write_vtp as write_vtp_2d
 
 VIEWABLE_EXTENSIONS = (".vtp", ".vtu", ".vtk", ".off")
@@ -404,6 +405,7 @@ def _processed_output_files(output_path: Path) -> list[Path]:
         ".vtk",
         ".vtp",
         ".vtu",
+        ".json",
     }
     return sorted(
         path
@@ -920,8 +922,6 @@ def _decimation_cli_flags(decimation: DecimationOptions3D) -> list[str]:
     if not decimation.enabled:
         return ["--no-decimate"]
     flags = [
-        "--decimate-target-faces",
-        str(decimation.target_faces),
         "--decimate-quality",
         str(decimation.quality_threshold),
         "--decimate-boundary-weight",
@@ -929,6 +929,19 @@ def _decimation_cli_flags(decimation: DecimationOptions3D) -> list[str]:
         "--decimate-planar-weight",
         str(decimation.planar_weight),
     ]
+    if decimation.target_edge_length is not None:
+        flags.extend(
+            ("--decimate-target-edge-length", str(decimation.target_edge_length))
+        )
+    elif decimation.target_faces is not None:
+        flags.extend(("--decimate-target-faces", str(decimation.target_faces)))
+    else:
+        flags.extend(
+            (
+                "--decimate-target-total-faces",
+                str(decimation.target_total_faces or DEFAULT_TARGET_TOTAL_FACES),
+            )
+        )
     if decimation.optimal_placement:
         flags.append("--decimate-optimal-placement")
     flags.append(
@@ -1157,6 +1170,20 @@ def _show_tetgen_log(output_path: Path) -> None:
         return
     with st.expander("TetGen output", expanded=True):
         st.code(log_path.read_text(encoding="utf-8"), language=None)
+
+
+def _show_decimation_report(output_path: Path) -> None:
+    report_path = output_path.with_name(f"{output_path.stem}.decimation.json")
+    if not report_path.exists():
+        return
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    st.caption(
+        "Decimation: "
+        f"{report['original_faces']:,} → {report['achieved_faces']:,} unique faces "
+        f"({report['mode']}, requested {report['requested_faces']:,}; "
+        f"protected {report['protected_faces']:,}; "
+        f"above target for safety {report['boundary_limited_faces']:,})."
+    )
 
 
 def _show_preset_data_download(
@@ -1402,28 +1429,55 @@ def _decimation_sidebar_controls(defaults: DecimationOptions3D) -> DecimationOpt
     if not enabled:
         return DecimationOptions3D(enabled=False)
 
-    target_faces = st.slider(
-        "Target faces per patch",
-        min_value=25,
-        max_value=1_000,
-        value=int(min(max(defaults.target_faces, 25), 1_000)),
-        step=25,
+    target_mode = st.radio(
+        "Decimation target",
+        ("Total face budget", "Target edge length"),
+        horizontal=True,
         help=(
-            "How many triangles decimation aims to keep in each patch (a "
-            "patch is a connected surface region owned by the same set of "
-            "material layers — not the whole model). **Lower:** coarser "
-            "geometry, fewer tetrahedra, faster meshing. **Higher:** more "
-            "geometric fidelity but larger, slower meshes. Patches already "
-            "at or below the target are left untouched, and the target is "
-            "relaxed automatically when hitting it would break a patch "
-            "boundary or fold the surface — so the result can end up above "
-            "this number. In particular, a flat patch cannot drop below its "
-            "own boundary edge count (junction curves and domain-wall traces "
-            "are kept exactly for conformity), so very low targets mainly "
-            "shrink patches with large, finely tessellated interiors. Turn "
-            "decimation off entirely for full-resolution output."
+            "The total budget is distributed across the unique conforming patch "
+            "complex by physical surface area. Edge length instead specifies an "
+            "approximate spatial resolution in model units."
         ),
     )
+    target_total_faces: int | None = None
+    target_edge_length: float | None = None
+    if target_mode == "Total face budget":
+        face_budgets = (
+            1_000,
+            2_000,
+            4_000,
+            5_600,
+            8_000,
+            12_000,
+            20_000,
+            50_000,
+            100_000,
+        )
+        default_budget = defaults.target_total_faces or DEFAULT_TARGET_TOTAL_FACES
+        target_total_faces = st.select_slider(
+            "Target total surface faces",
+            options=face_budgets,
+            value=min(face_budgets, key=lambda value: abs(value - default_budget)),
+            help=(
+                "Requested faces across unique decimatable patches. Each patch "
+                "receives a share proportional to its true 3D area. Protected "
+                "seams, fixed boundaries, and safety retries can make the achieved "
+                "count higher."
+            ),
+        )
+    else:
+        target_edge_length = float(
+            st.number_input(
+                "Target triangle edge length",
+                min_value=1e-6,
+                value=float(defaults.target_edge_length or 0.25),
+                format="%.6g",
+                help=(
+                    "Approximate edge length in model units. Patch targets are "
+                    "derived from the area of equilateral triangles of this size."
+                ),
+            )
+        )
     quality_threshold = st.slider(
         "Quality threshold",
         min_value=0.1,
@@ -1551,7 +1605,8 @@ def _decimation_sidebar_controls(defaults: DecimationOptions3D) -> DecimationOpt
     )
     return DecimationOptions3D(
         enabled=True,
-        target_faces=int(target_faces),
+        target_total_faces=target_total_faces,
+        target_edge_length=target_edge_length,
         quality_threshold=float(quality_threshold),
         preserve_boundary=preserve_boundary,
         boundary_weight=float(boundary_weight),
@@ -1807,6 +1862,7 @@ def app() -> None:  # noqa: C901, PLR0912, PLR0915
                     ),
                 )
             _show_tetgen_log(output_path)
+            _show_decimation_report(output_path)
             if selected_preset is not None:
                 _show_preset_data_download(
                     selected_preset,

@@ -1026,18 +1026,39 @@ def build_3d_surface(
     options-based patch decimator; passing options with ``enabled=False``
     and no decimator skips decimation entirely.
     """
+    surface, _ = build_3d_surface_with_report(
+        surfaces,
+        decimation=decimation,
+        decimator=decimator,
+        bottom_margin=bottom_margin,
+        seam_protection_rings=seam_protection_rings,
+    )
+    return surface
+
+
+def build_3d_surface_with_report(
+    surfaces: Sequence[Surface3D],
+    *,
+    decimation: DecimationOptions3D | None = None,
+    decimator: SurfaceDecimator3D | None = None,
+    bottom_margin: float = BOTTOM_MARGIN,
+    seam_protection_rings: int = SEAM_PROTECTION_RINGS,
+) -> tuple[Surface3D, DecimationReport | None]:
+    """Build a closed surface and return decimation statistics when enabled."""
     decimation = decimation or DecimationOptions3D()
+    report = None
     if decimation.enabled or decimator is not None:
-        surfaces, _ = decimate_conforming_3d_surfaces_with_report(
+        surfaces, report = decimate_conforming_3d_surfaces_with_report(
             surfaces,
             options=decimation,
             decimator=decimator,
             seam_protection_rings=seam_protection_rings,
         )
-    return close_3d_surface(
+    surface = close_3d_surface(
         merge_3d_surfaces(surfaces, bottom_margin=bottom_margin),
         bottom_margin=bottom_margin,
     )
+    return surface, report
 
 
 def surface_3d_to_poly_text(surface: Surface3D) -> str:

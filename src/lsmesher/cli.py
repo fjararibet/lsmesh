@@ -19,6 +19,7 @@ from lsmesher.meshing import (
     mesh as mesh_geometry,
 )
 from lsmesher.pipeline_3d import (
+    DEFAULT_TARGET_TOTAL_FACES,
     DecimationOptions3D,
 )
 
@@ -166,6 +167,12 @@ def decimation_options_from_args(args: CliArgs) -> DecimationOptions3D:
     defaults = DecimationOptions3D()
     return DecimationOptions3D(
         enabled=not getattr(args, "no_decimate", False),
+        target_total_faces=getattr(
+            args, "decimate_target_total_faces", defaults.target_total_faces
+        ),
+        target_edge_length=getattr(
+            args, "decimate_target_edge_length", defaults.target_edge_length
+        ),
         target_faces=getattr(args, "decimate_target_faces", defaults.target_faces),
         quality_threshold=getattr(args, "decimate_quality", defaults.quality_threshold),
         preserve_boundary=getattr(
@@ -388,14 +395,30 @@ def main() -> None:  # noqa: PLR0915
         action="store_true",
         help="Skip 3D patch decimation",
     )
-    mesh_parser.add_argument(
+    target_group = mesh_parser.add_mutually_exclusive_group()
+    target_group.add_argument(
+        "--decimate-target-total-faces",
+        type=_nonnegative_int,
+        default=DEFAULT_TARGET_TOTAL_FACES,
+        metavar="COUNT",
+        help=(
+            "Target face budget for the unique 3D patch complex, allocated by "
+            f"physical patch area (default: {DEFAULT_TARGET_TOTAL_FACES})"
+        ),
+    )
+    target_group.add_argument(
+        "--decimate-target-edge-length",
+        type=_positive_float,
+        default=None,
+        metavar="LENGTH",
+        help="Approximate target triangle edge length in model units",
+    )
+    target_group.add_argument(
         "--decimate-target-faces",
         type=int,
-        default=decimation_defaults.target_faces,
-        help=(
-            "Target face count per 3D patch "
-            f"(default: {decimation_defaults.target_faces})"
-        ),
+        default=None,
+        metavar="COUNT",
+        help=("Deprecated compatibility option: fixed target for every 3D patch"),
     )
     mesh_parser.add_argument(
         "--decimate-quality",
