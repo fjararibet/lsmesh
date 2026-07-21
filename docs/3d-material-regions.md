@@ -31,8 +31,9 @@ The regions are carried with the merged surface until `.poly` serialization.
 by `merge_3d_surfaces` before deduplication).
 
 Layer `i` is the material volume between surface `i - 1` (or the closure
-bottom plane for the first layer) and surface `i`, and gets material ID
-`i + 1`. Because wrapped level sets coincide wherever a layer has zero
+bottom plane for the first layer) and surface `i`. Live ViennaPS domains use
+the ID from `domain.getMaterialMap()`; file inputs without material metadata
+retain the positional fallback `i + 1`. Because wrapped level sets coincide wherever a layer has zero
 thickness, the faces *unique* to surface `i` (not coincident with surface
 `i - 1`) cap exactly the regions where the material exists.
 
@@ -46,7 +47,8 @@ For each edge-connected component of those unique faces:
 
 Sampling one point per component matters: in `selectiveEpitaxy` the mask is
 split into two disconnected halves by the fin, and each half needs its own
-region point carrying the same material ID.
+region point carrying the same material ID. Multiple level sets mapped to the
+same ViennaPS material also carry the same ID into TetGen and the output VTU.
 
 ### 3. TetGen POLY Region Records
 

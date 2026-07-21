@@ -92,8 +92,10 @@ print(result.log_path)
 ```
 
 The explicit `dimension` follows ViennaPS's process-wide dimension and lets
-static type checkers infer `MeshResult2D` or `MeshResult3D`. `result.materials`
-maps 1-based mesh regions back to ViennaPS material IDs and names.
+static type checkers infer `MeshResult2D` or `MeshResult3D`. For live domains,
+Triangle/TetGen and the resulting VTU use ViennaPS material IDs directly, so
+disconnected or repeated layers of the same material share one ID.
+`result.materials` retains the corresponding level-set order and names.
 
 Lower-level workflows can use `build_from_viennaps()`, `build_from_files()`,
 `validate()`, and `write()` independently. Material-region sampling can be made

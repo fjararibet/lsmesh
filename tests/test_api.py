@@ -1,7 +1,8 @@
 """Tests for the public, dependency-light conversion boundary."""
 
-from lsmesher import BuildOptions, build_from_files
+from lsmesher import BuildOptions, DecimationOptions3D, build_from_files
 from lsmesher.api import (
+    build_from_viennaps,
     layer_from_viennals,
     materials_from_viennaps,
     surface_from_viennals,
@@ -95,6 +96,49 @@ def test_materials_from_viennaps_preserves_region_order():
         (1, 0, "Si"),
         (2, 4, "SiO2"),
     ]
+
+
+class RepeatedMaterialMap(FakeMaterialMap):
+    """Material map containing the same ViennaPS material twice."""
+
+    def size(self) -> int:
+        return 2
+
+    def getMaterialIdAtIdx(self, index: int) -> int:  # noqa: N802
+        return (10, 10)[index]
+
+    def getMaterialAtIdx(self, index: int) -> object:  # noqa: N802
+        return ("Material.Si", "Material.Si")[index]
+
+
+class RepeatedMaterialDomain(FakeDomain):
+    """Domain exposing repeated material identity for two level sets."""
+
+    def getMaterialMap(self) -> RepeatedMaterialMap:  # noqa: N802
+        return RepeatedMaterialMap()
+
+
+def test_build_from_viennaps_writes_repeated_material_ids(monkeypatch):
+    lower = FakeMesh(
+        ((0, 0, 0), (1, 0, 0), (1, 1, 0), (0, 1, 0)),
+        triangles=((0, 1, 2), (0, 2, 3)),
+    )
+    upper = FakeMesh(
+        ((0, 0, 1), (1, 0, 1), (1, 1, 1), (0, 1, 1)),
+        triangles=((0, 1, 2), (0, 2, 3)),
+    )
+    monkeypatch.setattr(
+        "lsmesher.api._viennals_meshes",
+        lambda _domain, _dimension: (lower, upper),
+    )
+
+    geometry = build_from_viennaps(
+        RepeatedMaterialDomain(),  # type: ignore[arg-type]
+        3,
+        options=BuildOptions(decimation=DecimationOptions3D(enabled=False)),
+    )
+
+    assert [region.material for region in geometry.regions] == [10, 10]
 
 
 def test_seeded_sampler_is_repeatable():

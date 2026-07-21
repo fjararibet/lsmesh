@@ -531,6 +531,27 @@ def test_collect_3d_regions_samples_each_disconnected_component():
     assert [region.material for region in regions] == [1, 2, 2]
 
 
+def test_merge_3d_surfaces_keeps_material_ids_attached_when_sorting():
+    upper = square_surface(z=1.0)
+    lower = square_surface(z=0.0)
+
+    result = merge_3d_surfaces(
+        (upper, lower),
+        material_ids=(30, 10),
+    )
+
+    assert [region.material for region in result.regions] == [10, 30]
+
+
+def test_collect_3d_regions_preserves_repeated_material_ids():
+    regions = collect_3d_regions(
+        (square_surface(z=0.0), square_surface(z=1.0)),
+        material_ids=(10, 10),
+    )
+
+    assert [region.material for region in regions] == [10, 10]
+
+
 def test_close_3d_surface_adds_wall_and_bottom_facets():
     """Open boundaries on bounding box walls become closure facets."""
     merged = merge_3d_surfaces((square_surface(z=0.0), square_surface(z=1.0)))

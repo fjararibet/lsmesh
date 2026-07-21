@@ -101,10 +101,15 @@ def vtp_to_poly_string(
     edges: Sequence[Edge],
     holes: Sequence[Point2D] | None = None,
     attributes: Sequence[Point2D] | None = None,
+    attribute_ids: Sequence[int] | None = None,
 ) -> str:
     """Convert points and edges to a Triangle POLY format string."""
     holes = holes or []
     attributes = attributes or []
+    region_ids = attribute_ids or tuple(range(1, len(attributes) + 1))
+    if len(region_ids) != len(attributes):
+        msg = "Each Triangle region point must have one material ID"
+        raise ValueError(msg)
     lines = []
 
     # Section: Header with points
@@ -124,8 +129,10 @@ def vtp_to_poly_string(
 
     # Regions
     lines.append(f"{len(attributes)}")
-    for i, point in enumerate(attributes):
-        lines.append(f"{i + 1} {point.x} {point.y} {i + 1} -1")
+    for i, (point, material_id) in enumerate(
+        zip(attributes, region_ids, strict=True)
+    ):
+        lines.append(f"{i + 1} {point.x} {point.y} {material_id} -1")
 
     return "\n".join(lines)
 

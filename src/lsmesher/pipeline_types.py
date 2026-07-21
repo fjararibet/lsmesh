@@ -24,6 +24,7 @@ class Geometry2D:
     points: tuple[Point2D, ...]
     edges: tuple[Edge, ...]
     attributes: tuple[Point2D, ...] = ()
+    attribute_ids: tuple[int, ...] = ()
 
 
 @dataclass(frozen=True)

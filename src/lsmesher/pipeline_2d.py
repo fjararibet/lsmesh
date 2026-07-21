@@ -188,6 +188,7 @@ def merge_2d_layers(
     layers: Sequence[Layer2D],
     *,
     attributes: Sequence[Point2D] = (),
+    attribute_ids: Sequence[int] = (),
 ) -> Geometry2D:
     """Merge 2D layers into a single geometry."""
     merged_points: list[Point2D] = []
@@ -203,6 +204,7 @@ def merge_2d_layers(
         points=tuple(merged_points),
         edges=tuple(merged_edges),
         attributes=tuple(attributes),
+        attribute_ids=tuple(attribute_ids),
     )
 
 
@@ -217,6 +219,7 @@ def simplify_2d_geometry(geometry: Geometry2D, *, epsilon: float) -> Geometry2D:
         points=tuple(points),
         edges=tuple(edges),
         attributes=geometry.attributes,
+        attribute_ids=geometry.attribute_ids,
     )
 
 
@@ -226,6 +229,7 @@ def build_2d_poly_geometry(
     epsilon: float,
     detect_holes: bool,
     sampler: AttributeSampler2D = default_2d_attribute_sampler,
+    material_ids: Sequence[int] | None = None,
 ) -> Geometry2D:
     """Build merged 2D geometry from layers using pure transformation steps."""
     leftmost, rightmost = compute_bottom_points_2d_from_layers(layers)
@@ -240,7 +244,17 @@ def build_2d_poly_geometry(
         sampler=sampler,
         original_layers=layers,
     )
-    merged = merge_2d_layers(closed_layers, attributes=attributes)
+    attribute_ids = (
+        tuple(material_ids) if attributes and material_ids is not None else ()
+    )
+    if attribute_ids and len(attribute_ids) != len(attributes):
+        msg = "ViennaPS material count does not match the number of 2D level sets"
+        raise ValueError(msg)
+    merged = merge_2d_layers(
+        closed_layers,
+        attributes=attributes,
+        attribute_ids=attribute_ids,
+    )
     return simplify_2d_geometry(merged, epsilon=epsilon)
 
 
@@ -250,4 +264,5 @@ def geometry_2d_to_poly_text(geometry: Geometry2D) -> str:
         points=geometry.points,
         edges=geometry.edges,
         attributes=geometry.attributes,
+        attribute_ids=geometry.attribute_ids,
     )

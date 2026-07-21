@@ -823,14 +823,24 @@ def collect_3d_regions(
     surfaces: Sequence[Surface3D],
     *,
     bottom_margin: float = BOTTOM_MARGIN,
+    material_ids: Sequence[int] | None = None,
 ) -> tuple[Region3D, ...]:
     """Sample one interior region point per material volume component.
 
     Surfaces must be sorted bottom-up. Layer ``i`` is the material between
     surface ``i - 1`` (or the closure bottom plane for the first layer) and
     surface ``i``; each edge-connected component of the faces unique to
-    surface ``i`` caps one volume component and receives material ID ``i + 1``.
+    surface ``i`` caps one volume component and receives its supplied material ID.
+    Without explicit IDs, regions retain their historical 1-based numbering.
     """
+    resolved_ids = (
+        tuple(material_ids)
+        if material_ids is not None
+        else tuple(range(1, len(surfaces) + 1))
+    )
+    if len(resolved_ids) != len(surfaces):
+        msg = "ViennaPS material count does not match the number of 3D level sets"
+        raise ValueError(msg)
     all_z = [point.z for surface in surfaces for point in surface.points]
     min_z, max_z = min(all_z), max(all_z)
     height = max_z - min_z
@@ -854,7 +864,7 @@ def collect_3d_regions(
                 floor_z,
                 min_gap=min_gap,
             )
-            regions.append(Region3D(point=point, material=index + 1))
+            regions.append(Region3D(point=point, material=resolved_ids[index]))
     return tuple(regions)
 
 
@@ -862,6 +872,7 @@ def merge_3d_surfaces(
     surfaces: Sequence[Surface3D],
     *,
     bottom_margin: float = BOTTOM_MARGIN,
+    material_ids: Sequence[int] | None = None,
 ) -> Surface3D:
     """Merge conforming surfaces into one complex with material region points.
 
@@ -877,10 +888,30 @@ def merge_3d_surfaces(
         msg = "Cannot merge 3D surfaces: all surfaces must have points."
         raise ValueError(msg)
 
-    surfaces = sorted(
-        surfaces, key=lambda surface: min(point.z for point in surface.points)
+    if material_ids is None:
+        surfaces = tuple(
+            sorted(
+                surfaces,
+                key=lambda surface: min(point.z for point in surface.points),
+            )
+        )
+        resolved_ids = tuple(range(1, len(surfaces) + 1))
+    else:
+        resolved_ids = tuple(material_ids)
+        if len(resolved_ids) != len(surfaces):
+            msg = "ViennaPS material count does not match the number of 3D level sets"
+            raise ValueError(msg)
+        ordered = sorted(
+            zip(surfaces, resolved_ids, strict=True),
+            key=lambda item: min(point.z for point in item[0].points),
+        )
+        surfaces = tuple(surface for surface, _ in ordered)
+        resolved_ids = tuple(material_id for _, material_id in ordered)
+    regions = collect_3d_regions(
+        surfaces,
+        bottom_margin=bottom_margin,
+        material_ids=resolved_ids,
     )
-    regions = collect_3d_regions(surfaces, bottom_margin=bottom_margin)
 
     merged_points: list[Point3D] = []
     merged_faces: list[Face] = []
@@ -1015,13 +1046,14 @@ def close_3d_surface(
     )
 
 
-def build_3d_surface(
+def build_3d_surface(  # noqa: PLR0913
     surfaces: Sequence[Surface3D],
     *,
     decimation: DecimationOptions3D | None = None,
     decimator: SurfaceDecimator3D | None = None,
     bottom_margin: float = BOTTOM_MARGIN,
     seam_protection_rings: int = SEAM_PROTECTION_RINGS,
+    material_ids: Sequence[int] | None = None,
 ) -> Surface3D:
     """Build the final closed 3D surface complex from input surfaces.
 
@@ -1036,17 +1068,19 @@ def build_3d_surface(
         decimator=decimator,
         bottom_margin=bottom_margin,
         seam_protection_rings=seam_protection_rings,
+        material_ids=material_ids,
     )
     return surface
 
 
-def build_3d_surface_with_report(
+def build_3d_surface_with_report(  # noqa: PLR0913
     surfaces: Sequence[Surface3D],
     *,
     decimation: DecimationOptions3D | None = None,
     decimator: SurfaceDecimator3D | None = None,
     bottom_margin: float = BOTTOM_MARGIN,
     seam_protection_rings: int = SEAM_PROTECTION_RINGS,
+    material_ids: Sequence[int] | None = None,
 ) -> tuple[Surface3D, DecimationReport | None]:
     """Build a closed surface and return decimation statistics when enabled."""
     decimation = decimation or DecimationOptions3D()
@@ -1059,7 +1093,11 @@ def build_3d_surface_with_report(
             seam_protection_rings=seam_protection_rings,
         )
     surface = close_3d_surface(
-        merge_3d_surfaces(surfaces, bottom_margin=bottom_margin),
+        merge_3d_surfaces(
+            surfaces,
+            bottom_margin=bottom_margin,
+            material_ids=material_ids,
+        ),
         bottom_margin=bottom_margin,
     )
     return surface, report

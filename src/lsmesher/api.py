@@ -143,6 +143,13 @@ def materials_from_viennaps(domain: ViennaPSDomain) -> tuple[MaterialInfo, ...]:
     )
 
 
+def _material_ids_from_viennaps(domain: ViennaPSDomain) -> tuple[int, ...]:
+    material_map = domain.getMaterialMap()
+    return tuple(
+        material_map.getMaterialIdAtIdx(index) for index in range(material_map.size())
+    )
+
+
 @overload
 def build_from_files(
     files: Sequence[str | Path],
@@ -211,18 +218,21 @@ def build_from_viennaps(
     """Build a closed geometry directly from a live ``viennaps.Domain``."""
     config = options or BuildOptions()
     meshes = _viennals_meshes(domain, dimension)
+    material_ids = _material_ids_from_viennaps(domain)
     if dimension == 2:
         return build_2d_poly_geometry(
             tuple(layer_from_viennals(mesh) for mesh in meshes),
             epsilon=config.epsilon,
             detect_holes=config.detect_holes,
             sampler=_sampler(config),
+            material_ids=material_ids,
         )
     return build_3d_surface(
         tuple(surface_from_viennals(mesh) for mesh in meshes),
         decimation=config.decimation,
         bottom_margin=config.bottom_margin,
         seam_protection_rings=config.seam_protection_rings,
+        material_ids=material_ids,
     )
 
 
@@ -250,4 +260,5 @@ def build_3d_from_viennaps_with_report(
         decimation=config.decimation,
         bottom_margin=config.bottom_margin,
         seam_protection_rings=config.seam_protection_rings,
+        material_ids=_material_ids_from_viennaps(domain),
     )

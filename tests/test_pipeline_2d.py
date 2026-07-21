@@ -173,3 +173,17 @@ def test_geometry_2d_to_poly_text_serializes_attributes():
 
     assert result.splitlines()[0] == "3 2 1 0"
     assert "1 0.25 0.25 1 -1" in result
+
+
+def test_geometry_2d_to_poly_text_preserves_explicit_material_ids():
+    geometry = Geometry2D(
+        points=(Point2D(0.0, 0.0), Point2D(1.0, 0.0), Point2D(0.0, 1.0)),
+        edges=(Edge(0, 1), Edge(1, 2), Edge(2, 0)),
+        attributes=(Point2D(0.2, 0.2), Point2D(0.3, 0.3)),
+        attribute_ids=(10, 10),
+    )
+
+    result = geometry_2d_to_poly_text(geometry)
+
+    assert "1 0.2 0.2 10 -1" in result
+    assert "2 0.3 0.3 10 -1" in result
