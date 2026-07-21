@@ -194,7 +194,9 @@ def _presets(root: Path) -> list[Preset]:
     presets: list[Preset] = []
     for preset_dir in sorted(path for path in presets_dir.iterdir() if path.is_dir()):
         metadata_preset = _preset_from_metadata(preset_dir)
-        if metadata_preset is not None and metadata_preset.runner != "sdk":
+        if metadata_preset is None:
+            continue
+        if metadata_preset.runner != "sdk":
             generated_outputs = _discover_preset_outputs(
                 _preset_output_dir(root, metadata_preset.name) / "generated_preset",
                 dimension=metadata_preset.dimension or 3,
@@ -213,7 +215,7 @@ def _presets(root: Path) -> list[Preset]:
                     original_patterns=metadata_preset.original_patterns,
                     runner=metadata_preset.runner,
                 )
-            presets.append(metadata_preset)
+        presets.append(metadata_preset)
     return presets
 
 
@@ -694,9 +696,9 @@ def _preset_data_zip(
     raw_files: list[Path],
     original_files: list[Path],
 ) -> bytes:
-    """Build a ZIP containing processed, raw, and native ViennaPS meshes."""
-    if not processed_files or not raw_files or not original_files:
-        message = "Preset ZIP requires processed, raw, and original mesh files."
+    """Build a ZIP containing the available preset artifacts."""
+    if not processed_files:
+        message = "Preset ZIP requires processed mesh files."
         raise ValueError(message)
 
     entries: list[tuple[str, Path]] = []
@@ -723,12 +725,12 @@ def _preset_data_zip(
         mode="w",
         compression=zipfile.ZIP_DEFLATED,
     ) as archive:
-        readme = (
-            f"Preset: {preset_name}\n\n"
-            "meshed_output/: lsmesher processed mesh and mesher sidecars\n"
-            "raw_files/: per-interface ViennaPS files supplied to lsmesher\n"
-            "original_mesh/: native combined ViennaPS output\n"
-        )
+        readme = f"Preset: {preset_name}\n\n"
+        readme += "meshed_output/: lsmesher SDK output and mesher sidecars\n"
+        if raw_files:
+            readme += "raw_files/: per-interface ViennaPS files\n"
+        if original_files:
+            readme += "original_mesh/: native combined ViennaPS output\n"
         if state_script is not None:
             readme += (
                 f"\n{PARAVIEW_STATE_FILE_NAME}: ParaView state that opens every mesh "
@@ -1276,6 +1278,22 @@ def _show_preset_data_download(
     config_values: dict[str, str],
 ) -> None:
     """Render a complete preset ZIP download, generating native output if needed."""
+    if preset.runner == "sdk":
+        archive = _preset_data_zip(
+            preset.name,
+            processed_files=_processed_output_files(output_path),
+            raw_files=[],
+            original_files=[],
+        )
+        st.download_button(
+            "Download preset data (.zip)",
+            data=archive,
+            file_name=f"{_output_key(preset.name)}.zip",
+            mime="application/zip",
+            help="Includes the SDK mesh, material data, logs, and reports.",
+        )
+        return
+
     original_files = _preset_original_mesh_files(preset, root, raw_files)
     if not original_files:
         if preset.script is None or preset.config is None or preset.dimension is None:

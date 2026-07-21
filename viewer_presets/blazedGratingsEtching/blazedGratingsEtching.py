@@ -1,13 +1,8 @@
 import viennaps as ps
+
+from lsmesher import run_preset
 import numpy as np
 from argparse import ArgumentParser
-
-
-def saveLevelSetInterfaces(domain, prefix="interface"):
-    for i, levelSet in enumerate(domain.getLevelSets()):
-        mesh = ps.ls.Mesh()
-        ps.ls.ToSurfaceMesh(levelSet, mesh).apply()
-        ps.ls.VTKWriter(mesh, f"{prefix}_{i}").apply()
 
 # parse config file name and simulation dimension
 parser = ArgumentParser(
@@ -128,5 +123,4 @@ def BlazedGratings_Etch():
 
 BlazedGratings_Etch()
 
-geometry.saveSurfaceMesh(filename="original_mesh.vtp", addInterfaces=True)
-saveLevelSetInterfaces(geometry)
+run_preset(geometry, dimension=args.dim)

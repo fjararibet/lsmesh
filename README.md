@@ -112,3 +112,10 @@ topmost one.
 The viewer discovers examples under `viewer_presets/`. Set
 `LSMESHER_PRESETS_DIR` to use another preset directory. It can also load local
 or uploaded `.vtp`, `.vtu`, `.vtk`, and `.off` files.
+
+Presets are ordinary ViennaPS scripts that finish with
+`run_preset(domain, dimension=...)`. The live domain is meshed through the SDK
+in an isolated subprocess, preserving ViennaPS material identities without
+exporting intermediate interfaces. See
+[SDK viewer presets](docs/sdk-viewer-presets.md) for the three-file preset
+layout and a minimal example.

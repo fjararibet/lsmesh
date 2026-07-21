@@ -3,4 +3,4 @@ description = "Generate ion beam etching interfaces from config.txt."
 script = "ionBeamEtching.py"
 config = "config.txt"
 dimension = 3
-original_outputs = "original_mesh.vtp"
+runner = "sdk"

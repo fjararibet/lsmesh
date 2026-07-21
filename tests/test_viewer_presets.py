@@ -54,8 +54,8 @@ def test_presets_require_metadata(tmp_path, monkeypatch):
     assert _presets(tmp_path) == []
 
 
-def test_all_project_presets_define_original_mesh_and_generator(monkeypatch):
-    """Every downloadable preset can regenerate its native ViennaPS output."""
+def test_all_project_presets_use_sdk_generators(monkeypatch):
+    """Every project preset meshes its live ViennaPS domain through the SDK."""
     monkeypatch.delenv(PRESETS_DIR_ENV, raising=False)
 
     presets = _presets(Path.cwd())
@@ -73,7 +73,8 @@ def test_all_project_presets_define_original_mesh_and_generator(monkeypatch):
         "Trench Deposition",
         "Trench Deposition Geometric",
     }
-    assert all(preset.original_patterns for preset in presets)
+    assert all(preset.runner == "sdk" for preset in presets)
+    assert all(not preset.files for preset in presets)
     assert all(preset.script and preset.config for preset in presets)
 
 

@@ -1,6 +1,8 @@
 import viennaps as vps
 from argparse import ArgumentParser
 
+from lsmesher import run_preset
+
 # parse config file name and simulation dimension
 parser = ArgumentParser(
     prog="stackEtching",
@@ -98,11 +100,4 @@ process.setParameters(advParams)
 
 process.apply()
 
-geometry.saveVolumeMesh("original_mesh")
-
-# Extract final level-set interfaces as lines.
-# Loop starts at bottom and goes to top.
-for i, levelSet in enumerate(geometry.getLevelSets()):
-    mesh = vps.ls.Mesh()
-    vps.ls.ToSurfaceMesh(levelSet, mesh).apply()
-    vps.ls.VTKWriter(mesh, f"interface_{i}").apply()
+run_preset(geometry, dimension=args.dim)

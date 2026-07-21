@@ -1,12 +1,7 @@
 from argparse import ArgumentParser
 import viennaps as ps
 
-
-def saveLevelSetInterfaces(domain, prefix):
-    for i, levelSet in enumerate(domain.getLevelSets()):
-        mesh = ps.ls.Mesh()
-        ps.ls.ToSurfaceMesh(levelSet, mesh).apply()
-        ps.ls.VTKWriter(mesh, f"{prefix}_interface_{i}").apply()
+from lsmesher import run_preset
 
 # parse config file name and simulation dimension
 parser = ArgumentParser(prog="holeEtching", description="Run a hole etching process.")
@@ -56,7 +51,7 @@ ps.Length.setUnit(unit_aliases.get(length_unit, length_unit))
 ps.Time.setUnit(unit_aliases.get(time_unit, time_unit))
 
 
-def run_simulation(intermediate_velocities, suffix):
+def run_simulation(intermediate_velocities):
     # geometry setup, all units in um
     geometry = ps.Domain(
         gridDelta=params["gridDelta"],
@@ -117,11 +112,8 @@ def run_simulation(intermediate_velocities, suffix):
     # run the process
     process.apply()
 
-    output_file = params["outputFile"]
-    output_prefix = output_file.rsplit(".", 1)[0] if "." in output_file else output_file
-    geometry.saveSurfaceMesh(filename="original_mesh.vtp", addInterfaces=True)
-    saveLevelSetInterfaces(geometry, f"{output_prefix}{suffix}")
+    run_preset(geometry, dimension=args.dim)
 
 
 print("Running simulation...")
-run_simulation(False, "")
+run_simulation(False)

@@ -1,12 +1,7 @@
 from argparse import ArgumentParser
 import viennaps as ps
 
-
-def saveLevelSetInterfaces(domain, prefix="interface"):
-    for i, levelSet in enumerate(domain.getLevelSets()):
-        mesh = ps.ls.Mesh()
-        ps.ls.ToSurfaceMesh(levelSet, mesh).apply()
-        ps.ls.VTKWriter(mesh, f"{prefix}_{i}").apply()
+from lsmesher import run_preset
 
 # parse config file name and simulation dimension
 parser = ArgumentParser(
@@ -62,5 +57,4 @@ process.setParameters(advectionParams)
 
 process.apply()
 
-geometry.saveVolumeMesh("original_mesh")
-saveLevelSetInterfaces(geometry)
+run_preset(geometry, dimension=args.dim)

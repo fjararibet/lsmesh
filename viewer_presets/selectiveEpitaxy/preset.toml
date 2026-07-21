@@ -3,5 +3,4 @@ description = "Generate selective epitaxy interfaces from config.txt."
 script = "selectiveEpitaxy.py"
 config = "config.txt"
 dimension = 3
-outputs = "interface_*.vtp"
-original_outputs = "original_mesh_volume.vtu"
+runner = "sdk"

@@ -3,4 +3,4 @@ description = "Generate Bosch process interfaces from config.txt."
 script = "boschProcessSimulate.py"
 config = "config.txt"
 dimension = 3
-original_outputs = "original_mesh_volume.vtu"
+runner = "sdk"
