@@ -625,23 +625,11 @@ def test_surface_3d_to_off_text_serializes_surface():
 
 
 def test_run_3d_vtp_meshes_poly_sidecar(tmp_path, monkeypatch):
-    """VTP output uses a TetGen-compatible POLY sidecar when meshing is enabled."""
+    """The CLI delegates 3D meshing to the shared SDK operation."""
     output_path = tmp_path / "mesh.vtp"
-    surface = sample_surface()
-    tetgen_calls = []
-
-    def write_vtp(path, _points, _faces):
-        return Path(path).write_text("vtp", encoding="utf-8")
-
-    monkeypatch.setattr(cli, "build_from_files", lambda *_args, **_kwargs: surface)
-    monkeypatch.setattr(cli, "write_vtp_3d", write_vtp)
+    calls = []
     monkeypatch.setattr(
-        cli.subprocess,
-        "run",
-        lambda command, **kwargs: (
-            tetgen_calls.append((command, kwargs))
-            or subprocess.CompletedProcess(command, 0, stdout="", stderr="")
-        ),
+        cli, "mesh_geometry", lambda *args, **kwargs: calls.append((args, kwargs))
     )
 
     cli.run_3d(
@@ -659,40 +647,19 @@ def test_run_3d_vtp_meshes_poly_sidecar(tmp_path, monkeypatch):
         )
     )
 
-    poly_path = output_path.with_suffix(".poly")
-    assert output_path.read_text(encoding="utf-8") == "vtp"
-    assert poly_path.read_text(encoding="utf-8").splitlines()[0] == "4 3 0 0"
-    log_path = poly_path.with_name("mesh.tetgen.log")
-    assert log_path.read_text(encoding="utf-8").startswith(
-        f"Command: tetgen -pq1.4/15AkRa0.025 {poly_path}"
-    )
-    assert tetgen_calls == [
-        (
-            ["tetgen", "-pq1.4/15AkRa0.025", str(poly_path)],
-            {"check": False, "capture_output": True, "text": True},
-        )
-    ]
+    assert calls[0][0] == (["input.vtp"], str(output_path))
+    assert calls[0][1]["dimension"] == 3
+    assert calls[0][1]["options"].mesher.tetgen_quality_ratio == 1.4
 
 
 def test_run_3d_reports_tetgen_errors(tmp_path, monkeypatch):
-    """TetGen failures include captured output for Streamlit display."""
+    """Typed mesher errors propagate through the CLI boundary."""
     output_path = tmp_path / "mesh.vtp"
-    surface = sample_surface()
-
-    def write_vtp(path, _points, _faces):
-        return Path(path).write_text("vtp", encoding="utf-8")
-
-    def fail_tetgen(command, **_kwargs: object):
-        return subprocess.CompletedProcess(
-            command,
-            1,
-            stdout="Opening mesh.poly\nRecovering boundaries...",
-            stderr="A facet and a segment exactly intersect.",
-        )
-
-    monkeypatch.setattr(cli, "build_from_files", lambda *_args, **_kwargs: surface)
-    monkeypatch.setattr(cli, "write_vtp_3d", write_vtp)
-    monkeypatch.setattr(cli.subprocess, "run", fail_tetgen)
+    monkeypatch.setattr(
+        cli,
+        "mesh_geometry",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("tetgen failed")),
+    )
 
     with pytest.raises(RuntimeError) as error:
         cli.run_3d(
@@ -705,7 +672,4 @@ def test_run_3d_reports_tetgen_errors(tmp_path, monkeypatch):
             )
         )
 
-    message = str(error.value)
-    assert "TetGen failed with exit code 1" in message
-    assert "Recovering boundaries" in message
-    assert "A facet and a segment exactly intersect" in message
+    assert str(error.value) == "tetgen failed"

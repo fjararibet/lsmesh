@@ -2,48 +2,23 @@
 
 import argparse
 import os
-import shlex
-import subprocess
 import sys
-import tempfile
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal, Protocol
 
 import vtk
 
 from lsmesher._bin import SHOWME, TRIANGLE
-from lsmesher.api import BuildOptions, build_from_files
-from lsmesher.pipeline_2d import (
-    geometry_2d_to_poly_text,
+from lsmesher.api import BuildOptions
+from lsmesher.meshing import (
+    MesherOptions,
+    MeshingOptions,
+)
+from lsmesher.meshing import (
+    mesh as mesh_geometry,
 )
 from lsmesher.pipeline_3d import (
-    BOTTOM_MARGIN,
-    SEAM_PROTECTION_RINGS,
     DecimationOptions3D,
-    surface_3d_to_off_text,
-    surface_3d_to_poly_text,
-)
-from lsmesher.polygon_io_2d import (
-    read_triangle_mesh,
-)
-from lsmesher.polygon_io_2d import (
-    to_off_string as to_off_string_2d,
-)
-from lsmesher.polygon_io_2d import (
-    write_vtp as write_vtp_2d,
-)
-from lsmesher.polygon_io_2d import (
-    write_vtu as write_vtu_2d,
-)
-from lsmesher.polygon_io_3d import (
-    read_tetgen_mesh,
-)
-from lsmesher.polygon_io_3d import (
-    write_vtp as write_vtp_3d,
-)
-from lsmesher.polygon_io_3d import (
-    write_vtu as write_vtu_3d,
 )
 
 
@@ -111,18 +86,6 @@ class CliArgs(Protocol):
     verbose: bool
 
 
-@dataclass(frozen=True)
-class MesherOptions:
-    """Quality and geometry controls for Triangle and TetGen."""
-
-    triangle_min_angle: float = 20.0
-    tetgen_quality_ratio: float = 2.0
-    tetgen_min_dihedral: float = 0.0
-    tetgen_max_volume: float | None = None
-    bottom_margin: float = BOTTOM_MARGIN
-    seam_protection_rings: int = SEAM_PROTECTION_RINGS
-
-
 def mesher_options_from_args(args: CliArgs) -> MesherOptions:
     """Build mesher options from parsed CLI or viewer arguments."""
     explicit = getattr(args, "mesher", None)
@@ -155,83 +118,23 @@ def _triangle_switches(options: MesherOptions) -> str:
 
 
 def run_2d(args: CliArgs) -> None:
-    """Run the 2D meshing pipeline.
-
-    Args:
-        args: Parsed command line arguments.
-    """
+    """Run the 2D meshing pipeline."""
+    if not args.out:
+        return
     mesher = mesher_options_from_args(args)
-    geometry = build_from_files(
+    mesh_geometry(
         args.files,
-        2,
-        options=BuildOptions(
-            epsilon=args.epsilon,
-            detect_holes=not args.no_holes,
+        args.out,
+        dimension=2,
+        options=MeshingOptions(
+            build=BuildOptions(
+                epsilon=args.epsilon,
+                detect_holes=not args.no_holes,
+            ),
+            mesher=mesher,
+            run_mesher=not args.no_mesh,
         ),
     )
-
-    if args.format == "poly":
-        # Write POLY and optionally mesh
-        output = geometry_2d_to_poly_text(geometry)
-        if args.out:
-            with Path(args.out).open("w") as f:
-                f.write(output)
-            if not args.no_mesh:
-                kwargs = {}
-                if not args.verbose:
-                    kwargs["capture_output"] = True
-                subprocess.run(
-                    [str(TRIANGLE), _triangle_switches(mesher), args.out],
-                    check=False,
-                    **kwargs,
-                )
-    else:
-        if not args.out:
-            return
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            tmp_poly = Path(tmpdir) / "mesh.poly"
-            poly_content = geometry_2d_to_poly_text(geometry)
-            with tmp_poly.open("w") as f:
-                f.write(poly_content)
-
-            # Run Triangle in temp directory
-            if args.verbose:
-                subprocess.run(
-                    [str(TRIANGLE), _triangle_switches(mesher), str(tmp_poly)],
-                    cwd=tmpdir,
-                    check=False,
-                )
-            else:
-                subprocess.run(
-                    [str(TRIANGLE), _triangle_switches(mesher), str(tmp_poly)],
-                    cwd=tmpdir,
-                    check=False,
-                    capture_output=True,
-                )
-
-            # Read mesh output (triangles and attributes)
-            mesh_points, triangles, triangle_attributes = read_triangle_mesh(
-                tmp_poly.with_suffix("")
-            )
-
-            # Write output in requested format
-            if args.format == "off":
-                # Triangles as faces in OFF format
-                output = to_off_string_2d(mesh_points, triangles)
-                with Path(args.out).open("w") as f:
-                    f.write(output)
-            elif args.format == "vtp":
-                # Triangles as polygons in VTP
-                write_vtp_2d(args.out, mesh_points, triangles)
-            elif args.format == "vtu":
-                # Triangles as cells in VTU with material attributes
-                write_vtu_2d(args.out, mesh_points, triangles, triangle_attributes)
-
-
-def tetgen_log_path(poly_path: Path) -> Path:
-    """Return the TetGen log path written next to the POLY input."""
-    return poly_path.with_name(f"{poly_path.stem}.tetgen.log")
 
 
 def _tetgen_switches(options: MesherOptions) -> str:
@@ -244,50 +147,6 @@ def _tetgen_switches(options: MesherOptions) -> str:
         else ""
     )
     return f"-p{quality}AkR{volume}"
-
-
-def _run_tetgen(path: Path, options: MesherOptions | None = None) -> None:
-    options = options or MesherOptions()
-    command = ["tetgen", _tetgen_switches(options), str(path)]
-    result = subprocess.run(
-        command,
-        check=False,
-        capture_output=True,
-        text=True,
-    )
-    log_text = "\n\n".join(
-        part
-        for part in (f"Command: {shlex.join(command)}", result.stdout, result.stderr)
-        if part
-    )
-    tetgen_log_path(path).write_text(log_text, encoding="utf-8")
-    if result.stdout:
-        sys.stdout.write(result.stdout)
-    if result.stderr:
-        sys.stderr.write(result.stderr)
-
-    if result.returncode != 0:
-        details = "\n\n".join(
-            part
-            for part in (
-                f"TetGen failed with exit code {result.returncode} for {path}.",
-                f"stdout:\n{result.stdout}" if result.stdout else "",
-                f"stderr:\n{result.stderr}" if result.stderr else "",
-            )
-            if part
-        )
-        raise RuntimeError(details)
-
-
-def _write_tetgen_vtu(poly_path: Path) -> Path:
-    node_path = poly_path.with_name(f"{poly_path.stem}.1.node")
-    ele_path = poly_path.with_name(f"{poly_path.stem}.1.ele")
-    if not node_path.exists() or not ele_path.exists():
-        return poly_path.with_name(f"{poly_path.stem}.1.vtu")
-    points, tetrahedra, attributes = read_tetgen_mesh(poly_path.with_suffix(""))
-    output_path = poly_path.with_name(f"{poly_path.stem}.1.vtu")
-    write_vtu_3d(output_path, points, tetrahedra, attributes)
-    return output_path
 
 
 def decimation_options_from_args(args: CliArgs) -> DecimationOptions3D:
@@ -323,45 +182,24 @@ def decimation_options_from_args(args: CliArgs) -> DecimationOptions3D:
 
 
 def run_3d(args: CliArgs) -> None:
-    """Run the 3D meshing pipeline.
-
-    Args:
-        args: Parsed command line arguments.
-    """
+    """Run the 3D meshing pipeline."""
+    if not args.out:
+        return
     mesher = mesher_options_from_args(args)
-    surface = build_from_files(
+    mesh_geometry(
         args.files,
-        3,
-        options=BuildOptions(
-            decimation=decimation_options_from_args(args),
-            bottom_margin=mesher.bottom_margin,
-            seam_protection_rings=mesher.seam_protection_rings,
+        args.out,
+        dimension=3,
+        options=MeshingOptions(
+            build=BuildOptions(
+                decimation=decimation_options_from_args(args),
+                bottom_margin=mesher.bottom_margin,
+                seam_protection_rings=mesher.seam_protection_rings,
+            ),
+            mesher=mesher,
+            run_mesher=not args.no_mesh,
         ),
     )
-
-    if args.format == "vtp":
-        if args.out:
-            write_vtp_3d(args.out, surface.points, surface.faces)
-            if not args.no_mesh:
-                poly_path = Path(args.out).with_suffix(".poly")
-                poly_path.write_text(surface_3d_to_poly_text(surface))
-                _run_tetgen(poly_path, mesher)
-                _write_tetgen_vtu(poly_path)
-        return
-
-    if args.format == "off":
-        output = surface_3d_to_off_text(surface)
-    else:  # poly
-        output = surface_3d_to_poly_text(surface)
-
-    if args.out:
-        with Path(args.out).open("w") as f:
-            f.write(output)
-        if not args.no_mesh:
-            output_path = Path(args.out)
-            _run_tetgen(output_path, mesher)
-            if output_path.suffix == ".poly":
-                _write_tetgen_vtu(output_path)
 
 
 def run_triangle(args: argparse.Namespace) -> None:

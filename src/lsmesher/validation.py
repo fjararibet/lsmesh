@@ -58,7 +58,7 @@ def _validate_2d(geometry: Geometry2D) -> ValidationReport:
     )
     degenerate = sum(edge.start == edge.end for edge in geometry.edges)
     counts = Counter(index for edge in geometry.edges for index in edge.as_tuple())
-    open_vertices = sum(count != 2 for count in counts.values())
+    open_vertices = sum(count == 1 for count in counts.values())
     if not geometry.points or not geometry.edges:
         issues.append(ValidationIssue("empty", "2D geometry is empty", "error"))
     if invalid:
@@ -79,7 +79,10 @@ def _validate_2d(geometry: Geometry2D) -> ValidationReport:
     if open_vertices:
         issues.append(
             ValidationIssue(
-                "open-boundary", "2D boundary is not closed", "error", open_vertices
+                "open-boundary",
+                "2D geometry contains dangling boundary vertices",
+                "warning",
+                open_vertices,
             )
         )
     return ValidationReport(tuple(issues))

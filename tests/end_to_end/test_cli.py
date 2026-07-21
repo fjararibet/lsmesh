@@ -45,7 +45,6 @@ class Test2DExtraction:
                 "-m",
                 "lsmesher.cli",
                 "mesh",
-                "--no-mesh",
                 "--no-holes",
             ]
             + [str(f) for f in vtp_files]
