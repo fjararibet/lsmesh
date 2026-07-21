@@ -18,6 +18,7 @@ from lsmesher.viewer import (
     Preset,
     ProcessedMeshOptions,
     PyVistaPngOptions,
+    _decimation_cli_flags,
     _geometry_bounding_box_volume,
     _load_preset,
     _mesh_edge_coordinates,
@@ -188,6 +189,16 @@ def test_processed_mesh_retry_options_keep_selected_settings():
         assert options.decimation.quality_threshold == 0.3
         assert options.decimation.optimal_placement is True
         assert reason
+
+
+def test_decimation_cli_flags_select_scalable_target_mode():
+    total_flags = _decimation_cli_flags(DecimationOptions3D(target_total_faces=12_000))
+    edge_flags = _decimation_cli_flags(DecimationOptions3D(target_edge_length=0.2))
+
+    assert (
+        total_flags[total_flags.index("--decimate-target-total-faces") + 1] == "12000"
+    )
+    assert edge_flags[edge_flags.index("--decimate-target-edge-length") + 1] == "0.2"
 
 
 def test_metadata_backed_preset_uses_existing_generated_files(tmp_path, monkeypatch):

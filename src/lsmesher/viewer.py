@@ -1136,7 +1136,8 @@ def _processed_mesh_failure_guidance(options: ProcessedMeshOptions) -> str:
     if options.decimation.enabled:
         return (
             "All attempts failed with the selected settings. Try reducing "
-            "decimation manually: increase target faces per patch, raise the "
+            "decimation manually: increase the total face budget or reduce the "
+            "target edge length, raise the "
             "quality threshold, or turn off optimal vertex placement."
         )
     return (

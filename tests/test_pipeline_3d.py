@@ -1,8 +1,6 @@
 """Tests for composable 3D pipeline transformations."""
 
 import argparse
-import subprocess
-from pathlib import Path
 
 import pytest
 
@@ -12,9 +10,10 @@ from lsmesher.pipeline_3d import (
     DecimationOptions3D,
     _area_weighted_targets,
     _has_fold_edges,
-    _split_seam_neighborhood,
     _single_patch_target,
+    _split_seam_neighborhood,
     build_3d_surface,
+    build_3d_surface_with_report,
     close_3d_surface,
     collect_3d_regions,
     compute_bottom_points_3d_from_surfaces,
@@ -391,6 +390,19 @@ def test_build_3d_surface_can_disable_decimation():
     assert result.faces == (Face((0, 1, 3, 2)), Face((4, 5, 7, 6)))
 
 
+def test_build_3d_surface_reports_requested_and_achieved_faces():
+    _surface, report = build_3d_surface_with_report(
+        (square_surface(z=0.0), square_surface(z=1.0)),
+        decimation=DecimationOptions3D(target_total_faces=100),
+    )
+
+    assert report is not None
+    assert report.mode == "total_faces"
+    assert report.requested_faces == 100
+    assert report.original_faces == 4
+    assert report.achieved_faces == 4
+
+
 def test_decimation_options_from_args_uses_defaults_for_missing_flags():
     """Namespaces without decimation flags fall back to the defaults."""
     options = cli.decimation_options_from_args(argparse.Namespace())
@@ -421,6 +433,18 @@ def test_decimation_options_from_args_reads_cli_flags():
         planar_quadric=False,
         planar_weight=0.1,
     )
+
+
+def test_decimation_options_from_args_reads_scalable_targets():
+    total = cli.decimation_options_from_args(
+        argparse.Namespace(decimate_target_total_faces=12_000)
+    )
+    edge = cli.decimation_options_from_args(
+        argparse.Namespace(decimate_target_edge_length=0.2)
+    )
+
+    assert total.target_total_faces == 12_000
+    assert edge.target_edge_length == 0.2
 
 
 def test_decimation_options_from_args_prefers_explicit_options():

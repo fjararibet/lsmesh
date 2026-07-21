@@ -80,7 +80,7 @@ result = mesh(
     dimension=3,
     options=MeshingOptions(
         build=BuildOptions(
-            decimation=DecimationOptions3D(target_faces=700),
+            decimation=DecimationOptions3D(target_total_faces=5_600),
         ),
     ),
 )

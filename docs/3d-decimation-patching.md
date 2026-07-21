@@ -94,21 +94,13 @@ kept.
 This means decimation is conservative: preserving a valid conforming complex is
 more important than hitting the requested triangle count.
 
-## Target Faces
+## Decimation Targets
 
-`DecimationOptions3D.target_faces` is a per-patch target, not a global target
-for the entire model. A model with many patches can therefore produce many more
-faces than this number overall.
-
-The target is also clamped to at least the number of boundary edges in the
-patch:
-
-```python
-target = max(options.target_faces, len(boundary))
-```
-
-This avoids asking the decimator to produce fewer triangles than the patch
-boundary can reasonably support.
+Patch targets are derived from either a global face budget or a target edge
+length. Both modes scale with physical patch area; patches do not receive an
+identical fixed face count. See [3D decimation targets](3d-decimation-targets.md)
+for the allocation algorithm, safety floors, reports, and migration from the
+deprecated per-patch option.
 
 ## Merge And Closure After Decimation
 

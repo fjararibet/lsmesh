@@ -240,6 +240,10 @@ def _triangulate_faces(surface: Surface3D) -> Surface3D:
     return Surface3D(points=surface.points, faces=tuple(triangles))
 
 
+def _triangle_count(surface: Surface3D) -> int:
+    return sum(max(0, len(face.vertices) - 2) for face in surface.faces)
+
+
 def _decimate_patch_once(
     patch: Surface3D,
     target_face_count: int,
@@ -613,7 +617,7 @@ def decimate_conforming_3d_surfaces_with_report(
     work: list[_PatchWork] = []
     original_faces = 0
     for label, patch in _patch_groups(surfaces):
-        original_faces += len(_triangulate_faces(patch).faces)
+        original_faces += _triangle_count(patch)
         protected, remainder = _split_seam_neighborhood(
             patch, rings=seam_protection_rings
         )
@@ -638,11 +642,11 @@ def decimate_conforming_3d_surfaces_with_report(
                 target_faces=target,
             )
         if item.protected is not None:
-            protected_faces += len(item.protected.faces)
+            protected_faces += _triangle_count(item.protected)
         if decimated is not None and target is not None:
-            boundary_limited_faces += max(0, len(decimated.faces) - target)
+            boundary_limited_faces += max(0, _triangle_count(decimated) - target)
         achieved_faces += sum(
-            len(piece.faces)
+            _triangle_count(piece)
             for piece in (item.protected, decimated)
             if piece is not None
         )
