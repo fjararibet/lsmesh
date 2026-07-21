@@ -17,12 +17,15 @@ from lsmesher.errors import (
     TriangleError,
 )
 from lsmesher.geometry_types import Edge, Face, Point2D, Point3D, Region3D
-from lsmesher.meshing import MesherOptions, MeshingOptions, mesh, write
+from lsmesher.meshing import MesherOptions, MeshingOptions, MeshPolicy, mesh, write
 from lsmesher.pipeline_3d import DecimationOptions3D, DecimationReport
 from lsmesher.pipeline_types import Geometry2D, Layer2D, Surface3D
 from lsmesher.presets import run_preset
 from lsmesher.results import (
+    AutomaticMeshReport,
     MaterialInfo,
+    MeshAttemptReport,
+    MeshQualityReport,
     MeshResult,
     MeshResult2D,
     MeshResult3D,
@@ -31,6 +34,7 @@ from lsmesher.results import (
 from lsmesher.validation import ValidationIssue, ValidationReport, validate
 
 __all__ = [
+    "AutomaticMeshReport",
     "BuildOptions",
     "DecimationOptions3D",
     "DecimationReport",
@@ -41,6 +45,9 @@ __all__ = [
     "Layer2D",
     "LsmesherError",
     "MaterialInfo",
+    "MeshAttemptReport",
+    "MeshPolicy",
+    "MeshQualityReport",
     "MeshResult",
     "MeshResult2D",
     "MeshResult3D",

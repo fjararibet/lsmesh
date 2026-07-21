@@ -58,6 +58,7 @@ def _request(dimension: int | None) -> dict[str, Any]:
         "dimension": dimension,
         "output_path": str(Path.cwd() / "mesh.vtu"),
         "manifest_path": str(Path.cwd() / "lsmesher-preset-result.json"),
+        "automatic": True,
     }
 
 
@@ -65,8 +66,6 @@ def _artifacts(result: MeshResult2D | MeshResult3D) -> list[str]:
     paths = {*result.output_paths}
     if result.log_path is not None:
         paths.add(result.log_path)
-    for directory in {path.parent for path in paths}:
-        paths.update(path for path in directory.iterdir() if path.is_file())
     return [str(path.resolve()) for path in sorted(paths)]
 
 
@@ -84,7 +83,7 @@ def run_preset(
         domain,
         output_path,
         dimension=resolved_dimension,
-        options=_options(request),
+        options=None if request.get("automatic") else _options(request),
     )
     manifest = {
         "dimension": resolved_dimension,
