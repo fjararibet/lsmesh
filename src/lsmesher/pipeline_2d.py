@@ -144,7 +144,9 @@ def collect_2d_attributes(
     attributes: list[Point2D] = []
     previous: Layer2D | None = None
     for layer, source_layer in zip(layers, source_layers, strict=True):
-        originally_closed = geometry2d.is_closed(source_layer.points, source_layer.edges)
+        originally_closed = geometry2d.is_closed(
+            source_layer.points, source_layer.edges
+        )
         attributes.append(
             sampler(layer, previous, originally_closed=originally_closed),
         )

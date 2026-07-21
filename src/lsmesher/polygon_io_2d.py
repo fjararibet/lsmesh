@@ -15,15 +15,7 @@ from lsmesher.geometry_types import (
 def read_poly(
     filename: str | Path,
 ) -> tuple[list[Point2D], list[Edge]]:
-    """Read a 2D polygon from a POLY file.
-
-    Args:
-        filename: Path to the POLY file.
-
-    Returns:
-        Tuple of (points, edges) where points are (x, y) coordinates
-        and edges are (i, j) tuples indexing into points.
-    """
+    """Read a 2D polygon from a POLY file."""
     with Path(filename).open() as f:
         point_count = int(f.readline().split()[0])
         points: list[Point2D] = []
@@ -45,13 +37,7 @@ def write_poly(
     points: Sequence[Point2D],
     edges: Sequence[Edge],
 ) -> None:
-    """Write a 2D polygon to a POLY file.
-
-    Args:
-        filename: Path to the output file.
-        points: List of (x, y) coordinates.
-        edges: List of edge tuples (i, j).
-    """
+    """Write a 2D polygon to a POLY file."""
     with Path(filename).open("w") as f:
         f.write(f"{len(points)} 2 0 0\n")
         f.writelines(
@@ -67,14 +53,7 @@ def write_poly(
 
 
 def read_vtp_points(vtp_file: str | Path) -> tuple[list[Point2D], int, int]:
-    """Read points from a VTP (VTK PolyData) file.
-
-    Args:
-        vtp_file: Path to the VTP file.
-
-    Returns:
-        Tuple of (points, leftmost_id, rightmost_id) where points are (x, y) coordinates.
-    """
+    """Read points from a VTP (VTK PolyData) file."""
     reader = vtk.vtkXMLPolyDataReader()
     reader.SetFileName(str(vtp_file))
     reader.Update()
@@ -100,14 +79,7 @@ def read_vtp_points(vtp_file: str | Path) -> tuple[list[Point2D], int, int]:
 
 
 def read_vtp_edges(vtp_file: str | Path) -> list[Edge]:
-    """Read edges from a VTP (VTK PolyData) file.
-
-    Args:
-        vtp_file: Path to the VTP file.
-
-    Returns:
-        List of edge tuples (i, j).
-    """
+    """Read edges from a VTP (VTK PolyData) file."""
     reader = vtk.vtkXMLPolyDataReader()
     reader.SetFileName(str(vtp_file))
     reader.Update()
@@ -130,17 +102,7 @@ def vtp_to_poly_string(
     holes: Sequence[Point2D] | None = None,
     attributes: Sequence[Point2D] | None = None,
 ) -> str:
-    """Convert points and edges to a Triangle POLY format string.
-
-    Args:
-        points: List of (x, y) coordinates.
-        edges: List of edge tuples (i, j).
-        holes: Optional list of hole points.
-        attributes: Optional list of region attributes.
-
-    Returns:
-        The POLY format string.
-    """
+    """Convert points and edges to a Triangle POLY format string."""
     holes = holes or []
     attributes = attributes or []
     lines = []
@@ -169,15 +131,7 @@ def vtp_to_poly_string(
 
 
 def to_off_string(points: Sequence[Point2D], faces: Sequence[Face]) -> str:
-    """Convert points and faces to an OFF (Object File Format) string.
-
-    Args:
-        points: List of (x, y) coordinates (2D, z will be 0).
-        faces: List of faces, each face is a list of vertex indices (0-based).
-
-    Returns:
-        The OFF format string.
-    """
+    """Convert points and faces to an OFF (Object File Format) string."""
     lines = ["OFF"]
 
     num_vertices = len(points)
@@ -186,9 +140,7 @@ def to_off_string(points: Sequence[Point2D], faces: Sequence[Face]) -> str:
 
     lines.append(f"{num_vertices} {num_faces} {num_edges}")
 
-    # Write vertices with z = 0
-    for point in points:
-        lines.append(f"{point.x} {point.y} 0")
+    lines.extend(f"{point.x} {point.y} 0" for point in points)
 
     # Faces
     for face in faces:
@@ -204,15 +156,7 @@ def write_vtp(
     points: Sequence[Point2D],
     cells: Sequence[Face],
 ) -> None:
-    """Write points and cells to a VTP (VTK PolyData) file.
-
-    Args:
-        filename: Path to the output VTP file.
-        points: List of (x, y) coordinates.
-        cells: List of cell tuples. For edges: (i, j), for triangles: (i, j, k).
-    """
-    import vtk
-
+    """Write points and cells to a VTP (VTK PolyData) file."""
     # Create VTK points (3D with z=0)
     vtk_points = vtk.vtkPoints()
     for point in points:
@@ -224,7 +168,6 @@ def write_vtp(
         polydata = vtk.vtkPolyData()
         polydata.SetPoints(vtk_points)
     elif len(cells[0].vertices) == 2:
-        # Edges (lines)
         lines = vtk.vtkCellArray()
         for cell in cells:
             i, j = cell.vertices
@@ -258,17 +201,7 @@ def write_vtp(
 def read_triangle_mesh(
     basename: str | Path,
 ) -> tuple[list[Point2D], list[Face], list[int]]:
-    """Read Triangle mesh output files (.1.node and .1.ele).
-
-    Args:
-        basename: Path without extension (e.g., '/tmp/mesh' reads '/tmp/mesh.1.node')
-
-    Returns:
-        Tuple of (points, triangles, attributes) where:
-        - points are (x, y) coordinates
-        - triangles are (i, j, k) vertex indices (0-based)
-        - attributes are integer region attributes per triangle (empty if none)
-    """
+    """Read Triangle mesh output files (.1.node and .1.ele)."""
     basename = Path(basename)
     node_file = basename.parent / f"{basename.name}.1.node"
     ele_file = basename.parent / f"{basename.name}.1.ele"
@@ -316,14 +249,7 @@ def write_vtu(
     triangles: Sequence[Face],
     attributes: Sequence[int] | None = None,
 ) -> None:
-    """Write a 2D triangle mesh to a VTU (VTK UnstructuredGrid) file.
-
-    Args:
-        filename: Path to the output VTU file.
-        points: List of (x, y) coordinates.
-        triangles: List of triangle tuples (i, j, k) with 0-based vertex indices.
-        attributes: Optional list of integer material attributes per triangle.
-    """
+    """Write a 2D triangle mesh to a VTU (VTK UnstructuredGrid) file."""
     filename = Path(filename)
 
     # Create VTK points (3D with z=0)

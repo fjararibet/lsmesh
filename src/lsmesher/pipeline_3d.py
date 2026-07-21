@@ -27,6 +27,8 @@ COORDINATE_PRECISION = 9
 BOTTOM_MARGIN = 0.10
 SIDE_WALL_TOLERANCE_FACTOR = 5e-4
 SEAM_PROTECTION_RINGS = 8
+CoordinateKey = tuple[float, float, float]
+EdgeKey = tuple[CoordinateKey, CoordinateKey]
 
 
 @dataclass(frozen=True)
@@ -111,14 +113,16 @@ def _offset_face(face: Face, offset: int) -> Face:
     return Face(tuple(vertex + offset for vertex in face.vertices))
 
 
-def _point_key(
-    point: Point3D, precision: int = COORDINATE_PRECISION
-) -> tuple[float, float, float]:
+def _point_key(point: Point3D, precision: int = COORDINATE_PRECISION) -> CoordinateKey:
     return (
         round(point.x, precision),
         round(point.y, precision),
         round(point.z, precision),
     )
+
+
+def _edge_key(first: CoordinateKey, second: CoordinateKey) -> EdgeKey:
+    return (first, second) if first <= second else (second, first)
 
 
 def _face_key(surface: Surface3D, face: Face) -> tuple[tuple[float, float, float], ...]:
@@ -182,19 +186,13 @@ def _deduplicate_surface(
     return Surface3D(points=tuple(points), faces=tuple(faces))
 
 
-def _face_edges(
-    surface: Surface3D, face: Face
-) -> list[tuple[tuple[float, float, float], tuple[float, float, float]]]:
+def _face_edges(surface: Surface3D, face: Face) -> list[EdgeKey]:
     """Return a face's edges as sorted coordinate-key pairs."""
     vertices = face.vertices
     return [
-        tuple(
-            sorted(
-                (
-                    _point_key(surface.points[start]),
-                    _point_key(surface.points[end]),
-                )
-            )
+        _edge_key(
+            _point_key(surface.points[start]),
+            _point_key(surface.points[end]),
         )
         for start, end in zip(vertices, (*vertices[1:], vertices[0]), strict=True)
     ]
@@ -202,15 +200,11 @@ def _face_edges(
 
 def _boundary_edge_keys(
     surface: Surface3D,
-) -> set[tuple[tuple[float, float, float], tuple[float, float, float]]]:
+) -> set[EdgeKey]:
     return {
-        tuple(
-            sorted(
-                (
-                    _point_key(surface.points[start]),
-                    _point_key(surface.points[end]),
-                )
-            )
+        _edge_key(
+            _point_key(surface.points[start]),
+            _point_key(surface.points[end]),
         )
         for start, end in _boundary_edges(surface)
     }
@@ -485,7 +479,7 @@ def _split_seam_neighborhood(
 def decimate_conforming_3d_surfaces(
     surfaces: Sequence[Surface3D],
     *,
-    decimator: SurfaceDecimator3D = decimate_3d_patch,
+    decimator: SurfaceDecimator3D | None = None,
     seam_protection_rings: int = SEAM_PROTECTION_RINGS,
 ) -> tuple[Surface3D, ...]:
     """Decimate conforming surfaces patch-wise so shared regions stay identical.
@@ -498,6 +492,7 @@ def decimate_conforming_3d_surfaces(
     self-touching seams are excluded from decimation so nearly tangent
     sheets keep their exact, conforming triangulation.
     """
+    decimator = decimator or partial(decimate_3d_patch)
     builders = [_SurfaceBuilder() for _ in surfaces]
     for label, patch in _patch_groups(surfaces):
         protected, remainder = _split_seam_neighborhood(

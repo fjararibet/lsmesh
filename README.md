@@ -39,6 +39,35 @@ uv run lsmesher --help
 uv run lsmesher-viewer
 ```
 
+## Python API and ViennaPS
+
+`lsmesher` accepts a live ViennaPS domain. It extracts each ordered level set
+through ViennaLS in memory, preserving the material-interface structure used by
+the meshing pipeline:
+
+```python
+import viennaps as vps
+
+from lsmesher import BuildOptions, build_from_viennaps
+from lsmesher.pipeline_3d import surface_3d_to_poly_text
+
+vps.setDimension(3)
+domain = vps.Domain()
+# Build or process the domain as usual.
+
+surface = build_from_viennaps(
+    domain,
+    dimension=3,
+    options=BuildOptions(detect_holes=True),
+)
+poly_text = surface_3d_to_poly_text(surface)
+```
+
+The explicit `dimension` argument follows ViennaPS's process-wide dimension and
+lets static type checkers infer `Geometry2D` or `Surface3D`. For exported VTP
+interfaces, use `build_from_files(files, dimension=2 | 3)` with files ordered
+from the lowest/innermost level set to the topmost one.
+
 ## Viewer presets
 
 The viewer discovers examples under `viewer_presets/`. Set

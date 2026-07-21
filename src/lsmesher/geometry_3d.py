@@ -27,16 +27,7 @@ def triangle_area(
     p2: Point3D,
     p3: Point3D,
 ) -> float:
-    """Compute the area of a triangle in 3D space.
-
-    Args:
-        p1: First vertex of the triangle.
-        p2: Second vertex of the triangle.
-        p3: Third vertex of the triangle.
-
-    Returns:
-        The area of the triangle.
-    """
+    """Compute the area of a triangle in 3D space."""
     v1 = (p2.x - p1.x, p2.y - p1.y, p2.z - p1.z)
     v2 = (p3.x - p1.x, p3.y - p1.y, p3.z - p1.z)
     cross_product = (
@@ -54,16 +45,7 @@ def remove_collinear(
     edges: Sequence[Edge],
     epsilon: float = 1e-3,
 ) -> tuple[list[Point3D], list[Edge]]:
-    """Remove collinear points from a 3D polyline.
-
-    Args:
-        points: List of (x, y, z) coordinates.
-        edges: List of edge tuples (i, j).
-        epsilon: Area threshold below which triangles are degenerate.
-
-    Returns:
-        Tuple of (filtered_points, filtered_edges).
-    """
+    """Remove collinear points from a 3D polyline."""
     if len(edges) < 2:
         return list(points), list(edges)
     done = False
@@ -118,19 +100,7 @@ def compute_closed_polyline(  # noqa: PLR0913
     leftmost_bottom_point: Point3D,
     rightmost_bottom_point: Point3D,
 ) -> tuple[list[Point3D], list[Edge]]:
-    """Compute a closed polyline by adding bottom connecting edges.
-
-    Args:
-        points: List of (x, y, z) coordinates.
-        edges: List of edge tuples (i, j).
-        leftmost_polyline: Index of leftmost point on the polyline.
-        rightmost_polyline: Index of rightmost point on the polyline.
-        leftmost_bottom_point: Coordinates of leftmost bottom point.
-        rightmost_bottom_point: Coordinates of rightmost bottom point.
-
-    Returns:
-        Tuple of (new_points, new_edges) with bottom closure.
-    """
+    """Compute a closed polyline by adding bottom connecting edges."""
     new_points = list(points)
     new_points.extend([leftmost_bottom_point, rightmost_bottom_point])
     new_edges = list(edges)
@@ -147,15 +117,7 @@ def compute_closed_polyline(  # noqa: PLR0913
 def remove_isolated_points(
     points: Sequence[Point3D], edges: Sequence[Edge]
 ) -> tuple[list[Point3D], list[Edge]]:
-    """Remove points not referenced by any edge.
-
-    Args:
-        points: List of (x, y, z) coordinates.
-        edges: List of edge tuples (i, j).
-
-    Returns:
-        Tuple of (filtered_points, remapped_edges).
-    """
+    """Remove points not referenced by any edge."""
     used_indices = {index for edge in edges for index in edge.as_tuple()}
 
     index_map = {}
@@ -176,18 +138,7 @@ def merge_solid(
     faces2: Sequence[Face],
     epsilon: float = 1e-6,
 ) -> tuple[list[Point3D], list[Face]]:
-    """Merge two OFF-style meshes, deduplicating close points and faces.
-
-    Args:
-        points1: First mesh's points.
-        faces1: First mesh's faces (each face is a list of vertex indices).
-        points2: Second mesh's points.
-        faces2: Second mesh's faces.
-        epsilon: Distance threshold for considering points coincident.
-
-    Returns:
-        Tuple of (merged_points, merged_faces).
-    """
+    """Merge two OFF-style meshes, deduplicating close points and faces."""
 
     def points_are_close(
         p1: Point3D,
@@ -242,18 +193,7 @@ def merge_solid_quick(
     faces2: Sequence[Face],
     epsilon: float = 1e-6,
 ) -> tuple[list[Point3D], list[Face]]:
-    """Merge two OFF-style meshes quickly using KDTree for point deduplication.
-
-    Args:
-        points1: First mesh's points.
-        faces1: First mesh's faces.
-        points2: Second mesh's points.
-        faces2: Second mesh's faces.
-        epsilon: Distance threshold for considering points coincident.
-
-    Returns:
-        Tuple of (merged_points, merged_faces).
-    """
+    """Merge two OFF-style meshes quickly using KDTree for point deduplication."""
     # Convert to numpy arrays
     pts1 = np.array([point.as_tuple() for point in points1], dtype=np.float64)
     pts2 = np.array([point.as_tuple() for point in points2], dtype=np.float64)
@@ -312,18 +252,7 @@ def merge_polygons_quick(
     edges2: Sequence[Edge],
     epsilon: float = 1e-6,
 ) -> tuple[list[Point2D], list[Edge]]:
-    """Merge two 2D polygons quickly using KDTree.
-
-    Args:
-        points1: First polygon's points.
-        edges1: First polygon's edges.
-        points2: Second polygon's points.
-        edges2: Second polygon's edges.
-        epsilon: Distance threshold for considering points coincident.
-
-    Returns:
-        Tuple of (merged_points, merged_edges).
-    """
+    """Merge two 2D polygons quickly using KDTree."""
     points1_arr = np.asarray([point.as_tuple() for point in points1])
     points2_arr = np.asarray([point.as_tuple() for point in points2])
     merged_points = list(points1)
@@ -361,15 +290,7 @@ def merge_polygons_quick(
 def remove_coincident(
     points: Sequence[Point3D], edges: Sequence[Edge]
 ) -> tuple[list[Point3D], list[Edge]]:
-    """Remove duplicate points and remap edges.
-
-    Args:
-        points: List of (x, y, z) coordinates.
-        edges: List of edge tuples (i, j).
-
-    Returns:
-        Tuple of (deduplicated_points, remapped_edges).
-    """
+    """Remove duplicate points and remap edges."""
     index_map: dict[int, int] = {}
     new_points: list[Point3D] = []
     for i, p in enumerate(points):
@@ -392,14 +313,7 @@ def remove_coincident(
 def centroid(
     points: Sequence[Point3D],
 ) -> Point3D:
-    """Compute the centroid of a set of 3D points.
-
-    Args:
-        points: List of (x, y, z) coordinates.
-
-    Returns:
-        The centroid coordinates (cx, cy, cz).
-    """
+    """Compute the centroid of a set of 3D points."""
     n = len(points)
     cx = sum(point.x for point in points) / n
     cy = sum(point.y for point in points) / n
@@ -408,15 +322,7 @@ def centroid(
 
 
 def sampling(points: Sequence[Point3D], edges: Sequence[Edge]) -> Point3D:
-    """Sample a random point inside a 3D polyhedron using rejection sampling.
-
-    Args:
-        points: List of polyhedron vertices.
-        edges: List of edge tuples defining the boundary.
-
-    Returns:
-        A random point (x, y, z) inside the polyhedron.
-    """
+    """Sample a random point inside a 3D polyhedron using rejection sampling."""
 
     def point_in_polygon(
         pt: Point3D,
@@ -467,17 +373,7 @@ def connect_ends(
     lbp: Point3D,
     rbp: Point3D,
 ) -> tuple[list[Point3D], list[Edge]]:
-    """Connect dangling edge endpoints to form a closed shape.
-
-    Args:
-        points: List of points (modified in place).
-        edges: List of edges (modified in place).
-        lbp: Left bottom point to add if needed.
-        rbp: Right bottom point to add if needed.
-
-    Returns:
-        Tuple of (points, edges) with connections added.
-    """
+    """Connect dangling edge endpoints to form a closed shape."""
     points = list(points)
     edges = list(edges)
     counter: defaultdict[int, int] = defaultdict(int)
@@ -509,17 +405,7 @@ def connect_all_ends(
     lbp: Point3D,
     rbp: Point3D,
 ) -> tuple[list[Point3D], list[Edge]]:
-    """Connect all dangling endpoints with a bottom edge.
-
-    Args:
-        points: List of points (modified in place).
-        edges: List of edges (modified in place).
-        lbp: Left bottom point to add.
-        rbp: Right bottom point to add.
-
-    Returns:
-        Tuple of (points, edges) with all connections added.
-    """
+    """Connect all dangling endpoints with a bottom edge."""
     points = list(points)
     edges = list(edges)
     counter: defaultdict[int, int] = defaultdict(int)
@@ -561,16 +447,7 @@ def close_solid(
     faces: Sequence[Face],
     border_points: Sequence[Point3D],
 ) -> tuple[list[Point3D], list[Face]]:
-    """Close a solid mesh by adding faces to connect border points.
-
-    Args:
-        points: Original mesh points.
-        faces: Original mesh faces.
-        border_points: Points defining the border to close (must form a loop).
-
-    Returns:
-        Tuple of (new_points, new_faces) with closing faces added.
-    """
+    """Close a solid mesh by adding faces to connect border points."""
     new_points = list(points)
     new_faces = list(faces)
 

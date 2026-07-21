@@ -11,15 +11,7 @@ from lsmesher.geometry_types import Edge, Face, Point3D, Region3D
 def read_poly(
     filename: str | Path,
 ) -> tuple[list[Point3D], list[Edge]]:
-    """Read a 3D polygon from a POLY file.
-
-    Args:
-        filename: Path to the POLY file.
-
-    Returns:
-        Tuple of (points, edges) where points are (x, y, z) coordinates
-        and edges are (i, j) tuples indexing into points.
-    """
+    """Read a 3D polygon from a POLY file."""
     with Path(filename).open() as f:
         point_count = int(f.readline().split()[0])
         points: list[Point3D] = []
@@ -41,13 +33,7 @@ def write_poly(
     points: Sequence[Point3D],
     edges: Sequence[Edge],
 ) -> None:
-    """Write a 3D polygon to a POLY file.
-
-    Args:
-        filename: Path to the output file.
-        points: List of (x, y, z) coordinates.
-        edges: List of edge tuples (i, j).
-    """
+    """Write a 3D polygon to a POLY file."""
     with Path(filename).open("w") as f:
         f.write(f"{len(points)} 3 0 0\n")
         f.writelines(
@@ -64,14 +50,7 @@ def write_poly(
 
 
 def read_vtp_points(vtp_file: str | Path) -> list[Point3D]:
-    """Read 3D points from a VTP (VTK PolyData) file.
-
-    Args:
-        vtp_file: Path to the VTP file.
-
-    Returns:
-        List of (x, y, z) coordinates.
-    """
+    """Read 3D points from a VTP (VTK PolyData) file."""
     reader = vtk.vtkXMLPolyDataReader()
     reader.SetFileName(str(vtp_file))
     reader.Update()
@@ -84,14 +63,7 @@ def read_vtp_points(vtp_file: str | Path) -> list[Point3D]:
 
 
 def read_vtp_edges(vtp_file: str | Path) -> list[Edge]:
-    """Read edges from a VTP (VTK PolyData) file.
-
-    Args:
-        vtp_file: Path to the VTP file.
-
-    Returns:
-        List of edge tuples (i, j).
-    """
+    """Read edges from a VTP (VTK PolyData) file."""
     reader = vtk.vtkXMLPolyDataReader()
     reader.SetFileName(str(vtp_file))
     reader.Update()
@@ -109,14 +81,7 @@ def read_vtp_edges(vtp_file: str | Path) -> list[Edge]:
 
 
 def read_vtp_faces(vtp_file: str | Path) -> list[Face]:
-    """Read faces from a VTP (VTK PolyData) file.
-
-    Args:
-        vtp_file: Path to the VTP file.
-
-    Returns:
-        List of faces, where each face is a list of vertex indices.
-    """
+    """Read faces from a VTP (VTK PolyData) file."""
     reader = vtk.vtkXMLPolyDataReader()
     reader.SetFileName(str(vtp_file))
     reader.Update()
@@ -137,15 +102,7 @@ def read_vtp_faces(vtp_file: str | Path) -> list[Face]:
 def load_off(
     path: str | Path,
 ) -> tuple[list[Point3D], list[Face]]:
-    """Load an OFF file and return (points, faces).
-
-    Args:
-        path: Path to the OFF file.
-
-    Returns:
-        Tuple of (points, faces) where points are [x, y, z] floats
-        and faces are lists of vertex indices.
-    """
+    """Load an OFF file and return (points, faces)."""
     with Path(path).open() as f:
         # Read first non-empty, non-comment line
         line = f.readline().strip()
@@ -188,21 +145,7 @@ def vtp_to_poly_string(  # noqa: PLR0913
     attributes: Sequence[float] | None = None,
     facets: Sequence[Sequence[Face]] | None = None,
 ) -> str:
-    """Convert a 3D mesh to a TetGen .poly formatted string.
-
-    Args:
-        points: List of (x, y, z) coordinates.
-        faces: List of faces, each face is a list of vertex indices (0-based).
-        holes: Optional list of hole points.
-        regions: Optional list of material region points.
-        attributes: Optional list of per-point attributes.
-        facets: Optional multi-polygon facets. Each facet is a group of
-            polygons; two-vertex polygons are segments constraining the
-            facet's triangulation.
-
-    Returns:
-        The TetGen POLY format string.
-    """
+    """Convert a 3D mesh to a TetGen .poly formatted string."""
     holes = holes or []
     regions = regions or []
     attributes = attributes or []
@@ -245,15 +188,7 @@ def vtp_to_poly_string(  # noqa: PLR0913
 
 
 def to_off_string(points: Sequence[Point3D], faces: Sequence[Face]) -> str:
-    """Convert points and faces to an OFF (Object File Format) string.
-
-    Args:
-        points: List of (x, y, z) coordinates.
-        faces: List of faces, each face is a list of vertex indices (0-based).
-
-    Returns:
-        The OFF format string.
-    """
+    """Convert points and faces to an OFF (Object File Format) string."""
     lines = ["OFF"]
 
     num_vertices = len(points)
@@ -345,13 +280,7 @@ def write_vtp(
     points: Sequence[Point3D],
     faces: Sequence[Face],
 ) -> None:
-    """Write points and faces to a VTP (VTK PolyData) file.
-
-    Args:
-        filename: Path to the output VTP file.
-        points: List of (x, y, z) coordinates.
-        faces: List of faces, each face is a list of vertex indices.
-    """
+    """Write points and faces to a VTP (VTK PolyData) file."""
     # Create VTK points
     vtk_points = vtk.vtkPoints()
     for point in points:

@@ -13,17 +13,14 @@ from typing import Literal, Protocol
 import vtk
 
 from lsmesher._bin import SHOWME, TRIANGLE
+from lsmesher.api import BuildOptions, build_from_files
 from lsmesher.pipeline_2d import (
-    build_2d_poly_geometry,
     geometry_2d_to_poly_text,
-    read_2d_layers,
 )
 from lsmesher.pipeline_3d import (
     BOTTOM_MARGIN,
     SEAM_PROTECTION_RINGS,
     DecimationOptions3D,
-    build_3d_surface,
-    read_3d_surfaces,
     surface_3d_to_off_text,
     surface_3d_to_poly_text,
 )
@@ -164,11 +161,13 @@ def run_2d(args: CliArgs) -> None:
         args: Parsed command line arguments.
     """
     mesher = mesher_options_from_args(args)
-    layers = read_2d_layers(args.files)
-    geometry = build_2d_poly_geometry(
-        layers,
-        epsilon=args.epsilon,
-        detect_holes=not args.no_holes,
+    geometry = build_from_files(
+        args.files,
+        2,
+        options=BuildOptions(
+            epsilon=args.epsilon,
+            detect_holes=not args.no_holes,
+        ),
     )
 
     if args.format == "poly":
@@ -330,12 +329,14 @@ def run_3d(args: CliArgs) -> None:
         args: Parsed command line arguments.
     """
     mesher = mesher_options_from_args(args)
-    surfaces = read_3d_surfaces(args.files)
-    surface = build_3d_surface(
-        surfaces,
-        decimation=decimation_options_from_args(args),
-        bottom_margin=mesher.bottom_margin,
-        seam_protection_rings=mesher.seam_protection_rings,
+    surface = build_from_files(
+        args.files,
+        3,
+        options=BuildOptions(
+            decimation=decimation_options_from_args(args),
+            bottom_margin=mesher.bottom_margin,
+            seam_protection_rings=mesher.seam_protection_rings,
+        ),
     )
 
     if args.format == "vtp":

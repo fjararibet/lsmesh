@@ -13,16 +13,7 @@ if TYPE_CHECKING:
 
 
 def triangle_area(p1: Point2D, p2: Point2D, p3: Point2D) -> float:
-    """Double the absolute area of the triangle formed by p1, p2, p3.
-
-    Args:
-        p1: First vertex of the triangle.
-        p2: Second vertex of the triangle.
-        p3: Third vertex of the triangle.
-
-    Returns:
-        Twice the absolute area of the triangle.
-    """
+    """Double the absolute area of the triangle formed by p1, p2, p3."""
     return abs(p1.x * (p2.y - p3.y) + p2.x * (p3.y - p1.y) + p3.x * (p1.y - p2.y))
 
 
@@ -31,16 +22,7 @@ def remove_collinear(
     edges: Sequence[Edge],
     epsilon: float = 1e-3,
 ) -> tuple[list[Point2D], list[Edge]]:
-    """Remove collinear points from a polygon.
-
-    Args:
-        points: List of (x, y) coordinates.
-        edges: List of edge tuples (i, j) indexing into points.
-        epsilon: Area threshold below which triangles are considered degenerate.
-
-    Returns:
-        Tuple of (filtered_points, filtered_edges).
-    """
+    """Remove collinear points from a polygon."""
     if len(edges) < 2:
         return list(points), list(edges)
     done = False
@@ -95,19 +77,7 @@ def compute_closed_polyline(  # noqa: PLR0913
     leftmost_bottom_point: Point2D,
     rightmost_bottom_point: Point2D,
 ) -> tuple[list[Point2D], list[Edge]]:
-    """Compute a closed polyline by adding bottom connecting edges.
-
-    Args:
-        points: List of (x, y) coordinates.
-        edges: List of edge tuples (i, j).
-        leftmost_polyline: Index of leftmost point on the polyline.
-        rightmost_polyline: Index of rightmost point on the polyline.
-        leftmost_bottom_point: Coordinates of leftmost bottom point to add.
-        rightmost_bottom_point: Coordinates of rightmost bottom point to add.
-
-    Returns:
-        Tuple of (new_points, new_edges) with bottom closure.
-    """
+    """Compute a closed polyline by adding bottom connecting edges."""
     new_points = list(points)
     new_points.extend([leftmost_bottom_point, rightmost_bottom_point])
     new_edges = list(edges)
@@ -124,15 +94,7 @@ def compute_closed_polyline(  # noqa: PLR0913
 def remove_isolated_points(
     points: Sequence[Point2D], edges: Sequence[Edge]
 ) -> tuple[list[Point2D], list[Edge]]:
-    """Remove points that are not referenced by any edge.
-
-    Args:
-        points: List of (x, y) coordinates.
-        edges: List of edge tuples (i, j).
-
-    Returns:
-        Tuple of (filtered_points, remapped_edges).
-    """
+    """Remove points that are not referenced by any edge."""
     used_indices = {index for edge in edges for index in edge.as_tuple()}
 
     index_map = {}
@@ -153,18 +115,7 @@ def merge_polygons(
     edges2: Sequence[Edge],
     epsilon: float = 1e-6,
 ) -> tuple[list[Point2D], list[Edge]]:
-    """Merge two polygons, deduplicating close points.
-
-    Args:
-        points1: First polygon's points.
-        edges1: First polygon's edges.
-        points2: Second polygon's points.
-        edges2: Second polygon's edges.
-        epsilon: Distance threshold for considering points coincident.
-
-    Returns:
-        Tuple of (merged_points, merged_edges).
-    """
+    """Merge two polygons, deduplicating close points."""
 
     def points_are_close(p1: Point2D, p2: Point2D, eps: float = epsilon) -> bool:
         return abs(p1.x - p2.x) <= eps and abs(p1.y - p2.y) <= eps
@@ -199,15 +150,7 @@ def merge_polygons(
 def remove_coincident(
     points: Sequence[Point2D], edges: Sequence[Edge]
 ) -> tuple[list[Point2D], list[Edge]]:
-    """Remove duplicate points and remap edges.
-
-    Args:
-        points: List of (x, y) coordinates.
-        edges: List of edge tuples (i, j).
-
-    Returns:
-        Tuple of (deduplicated_points, remapped_edges).
-    """
+    """Remove duplicate points and remap edges."""
     index_map: dict[int, int] = {}
     new_points: list[Point2D] = []
     for i, p in enumerate(points):
@@ -228,14 +171,7 @@ def remove_coincident(
 
 
 def centroid(points: Sequence[Point2D]) -> Point2D:
-    """Compute the centroid of a set of points.
-
-    Args:
-        points: List of (x, y) coordinates.
-
-    Returns:
-        The centroid coordinates (cx, cy).
-    """
+    """Compute the centroid of a set of points."""
     n = len(points)
     cx = sum(point.x for point in points) / n
     cy = sum(point.y for point in points) / n
@@ -247,15 +183,7 @@ def sampling(
     edges: Sequence[Edge],
     max_attempts: int = 10000,
 ) -> Point2D:
-    """Sample a random point inside a polygon using rejection sampling.
-
-    Args:
-        points: List of polygon vertices.
-        edges: List of edge tuples defining the polygon boundary.
-
-    Returns:
-        A random point (x, y) inside the polygon.
-    """
+    """Sample a point inside a polygon, failing after ``max_attempts``."""
 
     def bounding_box(
         points: Sequence[Point2D],
@@ -290,16 +218,7 @@ def point_in_polygon(
     points: Sequence[Point2D],
     edges: Sequence[Edge],
 ) -> bool:
-    """Check if a point is inside a polygon using ray casting.
-
-    Args:
-        pt: Point to test (x, y).
-        points: Polygon vertices.
-        edges: Polygon edges as (i, j) index pairs.
-
-    Returns:
-        True if point is inside the polygon.
-    """
+    """Check if a point is inside a polygon using ray casting."""
     x, y = pt.x, pt.y
     inside = False
     for edge in edges:
@@ -319,17 +238,7 @@ def constrained_sampling(
     other_edges: Sequence[Edge],
     max_attempts: int = 10000,
 ) -> Point2D:
-    """Sample a point inside the first polygon but outside the second.
-
-    Args:
-        points: First polygon's vertices (target polygon).
-        edges: First polygon's edges.
-        other_points: Second polygon's vertices (exclusion polygon).
-        other_edges: Second polygon's edges.
-
-    Returns:
-        A random point inside the first polygon but outside the second.
-    """
+    """Sample inside the first polygon and outside the second."""
 
     def bounding_box(
         points: Sequence[Point2D],
@@ -366,23 +275,7 @@ def get_region_attribute_points(
     polygons: list[tuple[list[Point2D], list[Edge]]],
     max_attempts: int = 1000,
 ) -> list[tuple[Point2D, int]]:
-    """Generate sample points for each material region between interfaces.
-
-    Given N interface polygons (ordered innermost to outermost), there are N
-    material regions:
-    - Region 1: Inside innermost polygon (polygons[0])
-    - Region i+1: Between polygons[i-1] and polygons[i] for i >= 1
-
-    Args:
-        polygons: List of (points, edges) tuples for each interface polygon,
-                 ordered from innermost (index 0) to outermost (index N-1).
-        max_attempts: Maximum sampling attempts per region before falling back
-                     to centroid.
-
-    Returns:
-        List of ((x, y), attribute_id) tuples, where attribute_id is 1-based
-        region index.
-    """
+    """Generate sample points for each material region between interfaces."""
     if not polygons:
         return []
 
@@ -391,9 +284,9 @@ def get_region_attribute_points(
     # Region 1: Inside innermost polygon
     innermost_points, innermost_edges = polygons[0]
     try:
-        p = sampling(innermost_points, innermost_edges)
+        p = sampling(innermost_points, innermost_edges, max_attempts)
         attributes.append((p, 1))
-    except Exception:
+    except RuntimeError:
         # Fall back to centroid
         p = centroid(innermost_points)
         attributes.append((p, 1))
@@ -404,7 +297,13 @@ def get_region_attribute_points(
         inner_points, inner_edges = polygons[i - 1]
 
         # Try constrained sampling
-        p = constrained_sampling(outer_points, outer_edges, inner_points, inner_edges)
+        p = constrained_sampling(
+            outer_points,
+            outer_edges,
+            inner_points,
+            inner_edges,
+            max_attempts,
+        )
 
         attributes.append((p, i + 1))
 
@@ -417,17 +316,7 @@ def connect_ends(
     lbp: Point2D,
     rbp: Point2D,
 ) -> tuple[list[Point2D], list[Edge]]:
-    """Connect dangling edge endpoints to form a closed shape.
-
-    Args:
-        points: List of points (modified in place).
-        edges: List of edges (modified in place).
-        lbp: Left bottom point to add if needed.
-        rbp: Right bottom point to add if needed.
-
-    Returns:
-        Tuple of (points, edges) with connections added.
-    """
+    """Connect dangling edge endpoints to form a closed shape."""
     points = list(points)
     edges = list(edges)
     counter: defaultdict[int, int] = defaultdict(int)
@@ -459,17 +348,7 @@ def connect_all_ends(
     lbp: Point2D,
     rbp: Point2D,
 ) -> tuple[list[Point2D], list[Edge]]:
-    """Connect all dangling endpoints to form a closed shape with bottom edge.
-
-    Args:
-        points: List of points (modified in place).
-        edges: List of edges (modified in place).
-        lbp: Left bottom point to add.
-        rbp: Right bottom point to add.
-
-    Returns:
-        Tuple of (points, edges) with all connections added.
-    """
+    """Connect all dangling endpoints to form a closed shape with bottom edge."""
     points = list(points)
     edges = list(edges)
     counter: defaultdict[int, int] = defaultdict(int)
@@ -504,17 +383,7 @@ def connect_prev(
     rightmost_point: Point2D,
     leftmost_point: Point2D,
 ) -> tuple[list[Point2D], list[Edge]]:
-    """Connect polygon ends to leftmost and rightmost bottom points.
-
-    Args:
-        points: List of points (modified in place).
-        edges: List of edges (modified in place).
-        rightmost_point: Rightmost bottom point to connect.
-        leftmost_point: Leftmost bottom point to connect.
-
-    Returns:
-        Tuple of (new_points, new_edges) with connections added.
-    """
+    """Connect polygon ends to leftmost and rightmost bottom points."""
     points = list(points)
     edges = list(edges)
     sorted_points = sorted(points)
@@ -543,15 +412,7 @@ def connect_prev(
 
 
 def is_closed(_points: Sequence[Point2D], edges: Sequence[Edge]) -> bool:
-    """Check if a polygon is closed (all points have degree 2).
-
-    Args:
-        _points: List of points (kept for API compatibility).
-        edges: List of edges.
-
-    Returns:
-        True if all points are connected to exactly 2 edges.
-    """
+    """Check if a polygon is closed (all points have degree 2)."""
     point_counter: defaultdict[int, int] = defaultdict(int)
     for edge in edges:
         point_counter[edge.start] += 1

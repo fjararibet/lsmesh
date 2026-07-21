@@ -630,14 +630,10 @@ def test_run_3d_vtp_meshes_poly_sidecar(tmp_path, monkeypatch):
     surface = sample_surface()
     tetgen_calls = []
 
-    def read_surfaces(_files):
-        return (surface,)
-
     def write_vtp(path, _points, _faces):
         return Path(path).write_text("vtp", encoding="utf-8")
 
-    monkeypatch.setattr(cli, "read_3d_surfaces", read_surfaces)
-    monkeypatch.setattr(cli, "build_3d_surface", lambda surfaces, **_: surfaces[0])
+    monkeypatch.setattr(cli, "build_from_files", lambda *_args, **_kwargs: surface)
     monkeypatch.setattr(cli, "write_vtp_3d", write_vtp)
     monkeypatch.setattr(
         cli.subprocess,
@@ -683,9 +679,6 @@ def test_run_3d_reports_tetgen_errors(tmp_path, monkeypatch):
     output_path = tmp_path / "mesh.vtp"
     surface = sample_surface()
 
-    def read_surfaces(_files):
-        return (surface,)
-
     def write_vtp(path, _points, _faces):
         return Path(path).write_text("vtp", encoding="utf-8")
 
@@ -697,8 +690,7 @@ def test_run_3d_reports_tetgen_errors(tmp_path, monkeypatch):
             stderr="A facet and a segment exactly intersect.",
         )
 
-    monkeypatch.setattr(cli, "read_3d_surfaces", read_surfaces)
-    monkeypatch.setattr(cli, "build_3d_surface", lambda surfaces, **_: surfaces[0])
+    monkeypatch.setattr(cli, "build_from_files", lambda *_args, **_kwargs: surface)
     monkeypatch.setattr(cli, "write_vtp_3d", write_vtp)
     monkeypatch.setattr(cli.subprocess, "run", fail_tetgen)
 
