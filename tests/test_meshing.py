@@ -109,6 +109,8 @@ def test_quality_report_detects_missing_material():
     )
 
     assert quality.minimum_measure == pytest.approx(1 / 6)
+    assert quality.minimum_shape_quality == pytest.approx(0.8399473666)
+    assert quality.shape_quality_p05 == quality.minimum_shape_quality
     assert quality.missing_material_ids == (30,)
     assert not quality.correct
 

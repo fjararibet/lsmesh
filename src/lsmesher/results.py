@@ -42,6 +42,8 @@ class MeshQualityReport:
     maximum_edge_length: float
     worst_edge_ratio: float
     edge_ratio_p95: float
+    minimum_shape_quality: float
+    shape_quality_p05: float
     material_ids: tuple[int, ...]
     missing_material_ids: tuple[int, ...] = ()
     unknown_material_ids: tuple[int, ...] = ()
@@ -78,6 +80,7 @@ class AutomaticMeshReport:
     grid_spacing: float | None
     selected_attempt: str
     attempts: tuple[MeshAttemptReport, ...]
+    quality_target_met: bool
 
 
 @dataclass(frozen=True)

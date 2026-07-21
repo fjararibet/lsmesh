@@ -55,12 +55,7 @@ the requested result:
 ```python
 import viennaps as vps
 
-from lsmesher import (
-    BuildOptions,
-    DecimationOptions3D,
-    MeshingOptions,
-    mesh,
-)
+from lsmesher import mesh
 
 vps.setDimension(3)
 domain = vps.Domain()
@@ -77,23 +72,26 @@ vps.MakeTrench(
 result = mesh(
     domain,
     "device.vtu",
-    dimension=3,
-    options=MeshingOptions(
-        build=BuildOptions(
-            decimation=DecimationOptions3D(target_total_faces=5_600),
-        ),
-    ),
 )
 
 print(result.mesh)
 print(result.materials)
+print(result.automatic)
+print(result.quality)
 print(result.validation.issues if result.validation else ())
 print(result.log_path)
 ```
 
-The explicit `dimension` follows ViennaPS's process-wide dimension and lets
-static type checkers infer `MeshResult2D` or `MeshResult3D`. For live domains,
-Triangle/TetGen and the resulting VTU use ViennaPS material IDs directly, so
+The SDK infers the dimension and uses the ViennaPS grid spacing to choose
+surface and volume resolution. It validates material coverage and element
+quality and performs bounded safer retries when necessary. Use `policy="fast"`
+or `policy="accurate"` to express a different goal; explicit `MeshingOptions`
+remain available as the expert override. See
+[automatic meshing](docs/automatic-meshing.md) for the policy and recovery
+contract.
+
+For live domains, Triangle/TetGen and the resulting VTU use ViennaPS material
+IDs directly, so
 disconnected or repeated layers of the same material share one ID.
 `result.materials` retains the corresponding level-set order and names.
 

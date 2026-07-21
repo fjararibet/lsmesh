@@ -1280,6 +1280,28 @@ def _show_decimation_report(output_path: Path) -> None:
     )
 
 
+def _show_automatic_report(output_path: Path) -> None:
+    report_path = output_path.with_name(f"{output_path.stem}.automatic.json")
+    if not report_path.exists():
+        return
+    content = json.loads(report_path.read_text(encoding="utf-8"))
+    automatic = content["automatic"]
+    quality = content.get("quality")
+    summary = (
+        f"Automatic meshing: {automatic['policy']} policy, "
+        f"{automatic['selected_attempt']} attempt, "
+        f"{len(automatic['attempts'])} attempt(s)"
+    )
+    if quality is not None:
+        summary += (
+            f"; {quality['element_count']:,} elements, "
+            f"5th-percentile shape quality {quality['shape_quality_p05']:.3f}"
+        )
+    if not automatic["quality_target_met"]:
+        summary += "; correctness passed but the policy quality target was not met"
+    st.caption(summary + ".")
+
+
 def _show_preset_data_download(
     preset: Preset,
     root: Path,
@@ -1966,6 +1988,7 @@ def app() -> None:  # noqa: C901, PLR0912, PLR0915
                 )
             _show_tetgen_log(output_path)
             _show_decimation_report(output_path)
+            _show_automatic_report(output_path)
             _show_preset_data_download(
                 selected_preset,
                 root,
@@ -2034,6 +2057,7 @@ def app() -> None:  # noqa: C901, PLR0912, PLR0915
                 )
             _show_tetgen_log(output_path)
             _show_decimation_report(output_path)
+            _show_automatic_report(output_path)
             if selected_preset is not None:
                 _show_preset_data_download(
                     selected_preset,

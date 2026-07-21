@@ -374,6 +374,7 @@ _POLICY_FACTORS: dict[MeshPolicy, tuple[float, float, float]] = {
     "balanced": (3.0, 5.0, 2.0),
     "accurate": (2.0, 3.5, 1.6),
 }
+_POLICY_SHAPE_P05 = {"fast": 0.10, "balanced": 0.20, "accurate": 0.30}
 
 
 def _automatic_options(
@@ -464,12 +465,19 @@ def _mesh_automatically(
     attempts: list[MeshAttemptReport] = []
     last_error: Exception | None = None
     names = ("scale-aware", "safer-surface", "no-decimation-recovery")
-    for name, options in zip(
-        names, _automatic_options(characteristic, policy), strict=True
+    option_attempts = _automatic_options(characteristic, policy)
+    for attempt_index, (name, options) in enumerate(
+        zip(names, option_attempts, strict=True)
     ):
         try:
             result = _with_quality(_mesh_once(source, output, dimension, options))
             _raise_for_quality(result.quality)
+            quality_target_met = _quality_target_met(result.quality, policy)
+            _raise_for_policy_quality(
+                policy,
+                target_met=quality_target_met,
+                final=attempt_index == len(option_attempts) - 1,
+            )
         except (InvalidGeometryError, TetGenError, TriangleError, ValueError) as error:
             attempts.append(
                 _attempt_report(name, options, success=False, error=str(error))
@@ -484,6 +492,7 @@ def _mesh_automatically(
             grid_spacing=spacing,
             selected_attempt=name,
             attempts=tuple(attempts),
+            quality_target_met=quality_target_met,
         )
         report_path = _write_automatic_report(output, automatic, result.quality)
         return replace(
@@ -515,6 +524,21 @@ def _raise_for_quality(report: MeshQualityReport | None) -> None:
         raise InvalidGeometryError(_quality_error(report))
 
 
+def _quality_target_met(
+    report: MeshQualityReport | None, policy: MeshPolicy
+) -> bool:
+    return report is None or report.shape_quality_p05 >= _POLICY_SHAPE_P05[policy]
+
+
+def _raise_for_policy_quality(
+    policy: MeshPolicy, *, target_met: bool, final: bool
+) -> None:
+    if target_met or final:
+        return
+    message = f"5th-percentile shape quality is below the {policy} target"
+    raise ValueError(message)
+
+
 def _expected_material_ids(materials: tuple[MaterialInfo, ...]) -> set[int]:
     return {material.material_id for material in materials}
 
@@ -534,15 +558,13 @@ def _element_quality(
         measures = doubled_area / 2.0
         edge_pairs = ((0, 1), (1, 2), (2, 0))
     else:
-        measures = np.abs(
-            np.einsum(
-                "ij,ij->i",
-                vertices[:, 1] - vertices[:, 0],
-                np.cross(
-                    vertices[:, 2] - vertices[:, 0],
-                    vertices[:, 3] - vertices[:, 0],
-                ),
-            )
+        measures = np.einsum(
+            "ij,ij->i",
+            vertices[:, 1] - vertices[:, 0],
+            np.cross(
+                vertices[:, 2] - vertices[:, 0],
+                vertices[:, 3] - vertices[:, 0],
+            ),
         ) / 6.0
         edge_pairs = ((0, 1), (0, 2), (0, 3), (1, 2), (1, 3), (2, 3))
     edge_lengths = np.stack(
@@ -559,6 +581,22 @@ def _element_quality(
         out=np.full_like(minimum_edges, np.inf),
         where=minimum_edges > 0,
     )
+    squared_edge_sum = np.sum(edge_lengths**2, axis=1)
+    if cells.shape[1] == 3:
+        shape_quality = np.divide(
+            4.0 * math.sqrt(3.0) * measures,
+            squared_edge_sum,
+            out=np.zeros_like(measures),
+            where=squared_edge_sum > 0,
+        )
+    else:
+        positive_measure = np.maximum(measures, 0.0)
+        shape_quality = np.divide(
+            12.0 * np.power(3.0 * positive_measure, 2.0 / 3.0),
+            squared_edge_sum,
+            out=np.zeros_like(measures),
+            where=squared_edge_sum > 0,
+        )
     actual = set(attributes)
     expected = _expected_material_ids(materials)
     return MeshQualityReport(
@@ -568,6 +606,12 @@ def _element_quality(
         maximum_edge_length=float(edge_lengths.max()) if edge_lengths.size else 0.0,
         worst_edge_ratio=float(ratios.max()) if ratios.size else 0.0,
         edge_ratio_p95=float(np.percentile(ratios, 95)) if ratios.size else 0.0,
+        minimum_shape_quality=(
+            float(shape_quality.min()) if shape_quality.size else 0.0
+        ),
+        shape_quality_p05=(
+            float(np.percentile(shape_quality, 5)) if shape_quality.size else 0.0
+        ),
         material_ids=tuple(sorted(actual)),
         missing_material_ids=tuple(sorted(expected - actual)),
         unknown_material_ids=tuple(sorted(actual - expected)) if expected else (),
