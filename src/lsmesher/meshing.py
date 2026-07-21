@@ -19,7 +19,12 @@ from lsmesher.api import (
     build_from_viennaps,
     materials_from_viennaps,
 )
-from lsmesher.errors import MesherNotFoundError, TetGenError, TriangleError
+from lsmesher.errors import (
+    InvalidGeometryError,
+    MesherNotFoundError,
+    TetGenError,
+    TriangleError,
+)
 from lsmesher.geometry_types import Face
 from lsmesher.pipeline_2d import geometry_2d_to_poly_text
 from lsmesher.pipeline_3d import surface_3d_to_off_text, surface_3d_to_poly_text
@@ -51,7 +56,7 @@ from lsmesher.results import (
     MeshResult3D,
     TetrahedralMesh3D,
 )
-from lsmesher.validation import validate
+from lsmesher.validation import ValidationReport, validate
 
 OutputFormat: TypeAlias = Literal["poly", "off", "vtp", "vtu"]
 MeshInput: TypeAlias = ViennaPSDomain | Sequence[str | Path] | Geometry2D | Surface3D
@@ -205,11 +210,12 @@ def mesh(
             else build_from_files(files, 3, options=config.build)
         )
 
+    report = validate(geometry)
     if config.validate:
-        validate(geometry).raise_for_errors()
+        report.raise_for_errors()
     if isinstance(geometry, Geometry2D):
-        return _mesh_2d(geometry, Path(output), config, materials)
-    return _mesh_3d(geometry, Path(output), config, materials)
+        return _mesh_2d(geometry, Path(output), config, materials, report)
+    return _mesh_3d(geometry, Path(output), config, materials, report)
 
 
 def _triangle_switches(options: MesherOptions) -> str:
@@ -233,11 +239,16 @@ def _mesh_2d(
     output: Path,
     config: MeshingOptions,
     materials: tuple[MaterialInfo, ...],
+    report: ValidationReport,
 ) -> MeshResult2D:
     format_name = output_format(output)
     if not config.run_mesher:
-        write(geometry, output)
-        return MeshResult2D(geometry, None, materials, (output,))
+        try:
+            write(geometry, output)
+        except ValueError as error:
+            msg = f"{format_name.upper()} output requires Triangle; remove --no-mesh"
+            raise InvalidGeometryError(msg) from error
+        return MeshResult2D(geometry, None, materials, (output,), validation=report)
 
     with tempfile.TemporaryDirectory(prefix="lsmesher-") as directory:
         poly_path = Path(directory) / "mesh.poly"
@@ -264,7 +275,7 @@ def _mesh_2d(
             tuple(points), tuple(triangles), tuple(attributes)
         )
         write(geometry if format_name == "poly" else triangle_mesh, output)
-    return MeshResult2D(geometry, triangle_mesh, materials, (output,), log_path)
+    return MeshResult2D(geometry, triangle_mesh, materials, (output,), log_path, report)
 
 
 def _mesh_3d(
@@ -272,11 +283,16 @@ def _mesh_3d(
     output: Path,
     config: MeshingOptions,
     materials: tuple[MaterialInfo, ...],
+    report: ValidationReport,
 ) -> MeshResult3D:
     format_name = output_format(output)
     if not config.run_mesher:
-        write(geometry, output)
-        return MeshResult3D(geometry, None, materials, (output,))
+        try:
+            write(geometry, output)
+        except ValueError as error:
+            msg = f"{format_name.upper()} output requires TetGen; remove --no-mesh"
+            raise InvalidGeometryError(msg) from error
+        return MeshResult3D(geometry, None, materials, (output,), validation=report)
 
     executable = shutil.which("tetgen")
     if executable is None:
@@ -304,7 +320,9 @@ def _mesh_3d(
             tuple(points), tuple(tetrahedra), tuple(attributes)
         )
         write(tetrahedral_mesh if format_name == "vtu" else geometry, output)
-    return MeshResult3D(geometry, tetrahedral_mesh, materials, (output,), log_path)
+    return MeshResult3D(
+        geometry, tetrahedral_mesh, materials, (output,), log_path, report
+    )
 
 
 def _write_log(

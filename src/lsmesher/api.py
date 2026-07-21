@@ -60,6 +60,8 @@ class ViennaPSMaterialMap(Protocol):
 
     def getMaterialAtIdx(self, index: int) -> object: ...  # noqa: N802
 
+    def toString(self, material: object) -> str: ...  # noqa: N802
+
 
 @dataclass(frozen=True)
 class BuildOptions:
@@ -133,7 +135,7 @@ def materials_from_viennaps(domain: ViennaPSDomain) -> tuple[MaterialInfo, ...]:
         MaterialInfo(
             region=index + 1,
             material_id=material_map.getMaterialIdAtIdx(index),
-            name=str(material_map.getMaterialAtIdx(index)).split(".")[-1],
+            name=material_map.toString(material_map.getMaterialAtIdx(index)),
         )
         for index in range(material_map.size())
     )

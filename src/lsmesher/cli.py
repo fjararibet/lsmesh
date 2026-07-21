@@ -10,6 +10,7 @@ import vtk
 
 from lsmesher._bin import SHOWME, TRIANGLE
 from lsmesher.api import BuildOptions
+from lsmesher.errors import LsmesherError
 from lsmesher.meshing import (
     MesherOptions,
     MeshingOptions,
@@ -130,9 +131,11 @@ def run_2d(args: CliArgs) -> None:
             build=BuildOptions(
                 epsilon=args.epsilon,
                 detect_holes=not args.no_holes,
+                random_seed=getattr(args, "random_seed", None),
             ),
             mesher=mesher,
             run_mesher=not args.no_mesh,
+            validate=not getattr(args, "no_validate", False),
         ),
     )
 
@@ -198,6 +201,7 @@ def run_3d(args: CliArgs) -> None:
             ),
             mesher=mesher,
             run_mesher=not args.no_mesh,
+            validate=not getattr(args, "no_validate", False),
         ),
     )
 
@@ -242,7 +246,7 @@ def _nonnegative_int(value: str) -> int:
     return number
 
 
-def main() -> None:
+def main() -> None:  # noqa: PLR0915
     """Main entry point for the CLI."""
     parser = argparse.ArgumentParser(
         description="Merge geometry from VTP files and output POLY/OFF, then run mesher."
@@ -286,6 +290,18 @@ def main() -> None:
         "--no-holes",
         action="store_true",
         help="Skip hole detection sampling (only needed for POLY output)",
+    )
+    mesh_parser.add_argument(
+        "--random-seed",
+        type=int,
+        default=None,
+        metavar="INTEGER",
+        help="Seed material-region sampling for reproducible 2D meshes",
+    )
+    mesh_parser.add_argument(
+        "--no-validate",
+        action="store_true",
+        help="Skip pre-mesher structural validation",
     )
     mesh_parser.add_argument(
         "-v",
@@ -473,10 +489,13 @@ def main() -> None:
                 args.format = "poly"  # Default when no output file specified
 
         dim = detect_dimension(args.files[0])
-        if dim == 2:
-            run_2d(args)
-        else:
-            run_3d(args)
+        try:
+            if dim == 2:
+                run_2d(args)
+            else:
+                run_3d(args)
+        except LsmesherError as error:
+            parser.exit(2, f"lsmesher: error: {error}\n")
     elif args.command == "triangle":
         run_triangle(args)
     elif args.command == "showme":

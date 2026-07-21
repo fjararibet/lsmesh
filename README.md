@@ -39,34 +39,71 @@ uv run lsmesher --help
 uv run lsmesher-viewer
 ```
 
+For a library-only installation, viewer dependencies are optional:
+
+```bash
+uv add lsmesher
+uv add "lsmesher[viewer]"  # only when the Streamlit viewer is needed
+```
+
 ## Python API and ViennaPS
 
-`lsmesher` accepts a live ViennaPS domain. It extracts each ordered level set
-through ViennaLS in memory, preserving the material-interface structure used by
-the meshing pipeline:
+`mesh()` accepts a live ViennaPS domain, extracts its ordered level sets in
+memory, validates the generated geometry, runs Triangle or TetGen, and writes
+the requested result:
 
 ```python
 import viennaps as vps
 
-from lsmesher import BuildOptions, build_from_viennaps
-from lsmesher.pipeline_3d import surface_3d_to_poly_text
+from lsmesher import (
+    BuildOptions,
+    DecimationOptions3D,
+    MeshingOptions,
+    mesh,
+)
 
 vps.setDimension(3)
 domain = vps.Domain()
-# Build or process the domain as usual.
-
-surface = build_from_viennaps(
+vps.MakeTrench(
     domain,
+    gridDelta=0.25,
+    xExtent=20.0,
+    yExtent=20.0,
+    trenchWidth=6.0,
+    trenchDepth=5.0,
+).apply()
+
+# Apply ViennaPS processes here, then create a material-resolved volume mesh.
+result = mesh(
+    domain,
+    "device.vtu",
     dimension=3,
-    options=BuildOptions(detect_holes=True),
+    options=MeshingOptions(
+        build=BuildOptions(
+            decimation=DecimationOptions3D(target_faces=700),
+        ),
+    ),
 )
-poly_text = surface_3d_to_poly_text(surface)
+
+print(result.mesh)
+print(result.materials)
+print(result.validation.issues if result.validation else ())
+print(result.log_path)
 ```
 
-The explicit `dimension` argument follows ViennaPS's process-wide dimension and
-lets static type checkers infer `Geometry2D` or `Surface3D`. For exported VTP
-interfaces, use `build_from_files(files, dimension=2 | 3)` with files ordered
-from the lowest/innermost level set to the topmost one.
+The explicit `dimension` follows ViennaPS's process-wide dimension and lets
+static type checkers infer `MeshResult2D` or `MeshResult3D`. `result.materials`
+maps 1-based mesh regions back to ViennaPS material IDs and names.
+
+Lower-level workflows can use `build_from_viennaps()`, `build_from_files()`,
+`validate()`, and `write()` independently. Material-region sampling can be made
+reproducible with `BuildOptions(random_seed=42)`. Mesher failures raise
+`TriangleError` or `TetGenError` and retain the command, captured output, return
+code, and log path.
+
+For exported VTP interfaces, pass the paths directly to `mesh()` or
+`build_from_files()`, ordered from the lowest/innermost level set to the
+topmost one.
 
 ## Viewer presets
 
