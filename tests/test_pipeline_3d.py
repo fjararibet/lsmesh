@@ -10,8 +10,10 @@ from lsmesher import cli
 from lsmesher.geometry_types import Face, Point3D, Region3D
 from lsmesher.pipeline_3d import (
     DecimationOptions3D,
+    _area_weighted_targets,
     _has_fold_edges,
     _split_seam_neighborhood,
+    _single_patch_target,
     build_3d_surface,
     close_3d_surface,
     collect_3d_regions,
@@ -240,6 +242,31 @@ def test_decimate_3d_patch_honors_target_faces_option():
     result = decimate_3d_patch(patch, DecimationOptions3D(target_faces=500))
 
     assert result is patch
+
+
+def test_area_weighted_targets_scale_with_physical_patch_area():
+    small = grid_surface(side=4)
+    large = grid_surface(side=8)
+
+    small_target, large_target = _area_weighted_targets((small, large), 100)
+
+    assert small_target == 20
+    assert large_target == 80
+
+
+def test_edge_length_target_scales_with_patch_area():
+    small = square_surface(z=0.0)
+    large = Surface3D(
+        points=tuple(
+            Point3D(point.x * 2, point.y * 2, point.z) for point in small.points
+        ),
+        faces=small.faces,
+    )
+    options = DecimationOptions3D(target_edge_length=0.25)
+
+    assert _single_patch_target(large, options) == 4 * _single_patch_target(
+        small, options
+    )
 
 
 def pinched_surface() -> Surface3D:

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass
-from functools import partial
 from itertools import pairwise, product
 from typing import TYPE_CHECKING, Protocol
 
@@ -27,6 +26,7 @@ COORDINATE_PRECISION = 9
 BOTTOM_MARGIN = 0.10
 SIDE_WALL_TOLERANCE_FACTOR = 5e-4
 SEAM_PROTECTION_RINGS = 8
+DEFAULT_TARGET_TOTAL_FACES = 5_600
 CoordinateKey = tuple[float, float, float]
 EdgeKey = tuple[CoordinateKey, CoordinateKey]
 
@@ -44,13 +44,27 @@ class DecimationOptions3D:
     """
 
     enabled: bool = True
-    target_faces: int = 700
+    target_total_faces: int | None = None
+    target_edge_length: float | None = None
+    target_faces: int | None = None
     quality_threshold: float = 0.3
     preserve_boundary: bool = True
     boundary_weight: float = 1000.0
     optimal_placement: bool = False
     planar_quadric: bool = True
     planar_weight: float = 0.001
+
+
+@dataclass(frozen=True)
+class DecimationReport:
+    """Requested and achieved size of the unique conforming patch complex."""
+
+    mode: str
+    requested_faces: int
+    original_faces: int
+    achieved_faces: int
+    protected_faces: int
+    boundary_limited_faces: int
 
 
 class SurfaceDecimator3D(Protocol):
@@ -268,6 +282,8 @@ def _decimate_patch_once(
 def decimate_3d_patch(
     patch: Surface3D,
     options: DecimationOptions3D | None = None,
+    *,
+    target_faces: int | None = None,
 ) -> Surface3D:
     """Decimate one manifold patch while keeping its boundary exactly fixed.
 
@@ -282,11 +298,12 @@ def decimate_3d_patch(
     """
     options = options or DecimationOptions3D()
     triangulated = _triangulate_faces(patch)
-    if len(triangulated.faces) <= options.target_faces:
+    target_faces = target_faces or _single_patch_target(triangulated, options)
+    if len(triangulated.faces) <= target_faces:
         return patch
 
     boundary = _boundary_edge_keys(patch)
-    target = options.target_faces
+    target = target_faces
     if options.preserve_boundary:
         # A patch that keeps its boundary cannot drop below the face count
         # the boundary edges themselves require.
@@ -302,6 +319,30 @@ def decimate_3d_patch(
             return decimated
         target *= 2
     return patch
+
+
+def _surface_area(surface: Surface3D) -> float:
+    area = 0.0
+    for face in surface.faces:
+        if len(face.vertices) < 3:
+            continue
+        origin = np.array(surface.points[face.vertices[0]].as_tuple())
+        for index in range(1, len(face.vertices) - 1):
+            first = np.array(surface.points[face.vertices[index]].as_tuple()) - origin
+            second = (
+                np.array(surface.points[face.vertices[index + 1]].as_tuple()) - origin
+            )
+            area += float(np.linalg.norm(np.cross(first, second))) * 0.5
+    return area
+
+
+def _single_patch_target(patch: Surface3D, options: DecimationOptions3D) -> int:
+    if options.target_edge_length is not None:
+        face_area = np.sqrt(3.0) * options.target_edge_length**2 / 4.0
+        return max(1, int(np.ceil(_surface_area(patch) / face_area)))
+    if options.target_faces is not None:
+        return options.target_faces
+    return options.target_total_faces or DEFAULT_TARGET_TOTAL_FACES
 
 
 class _SurfaceBuilder:
@@ -476,6 +517,65 @@ def _split_seam_neighborhood(
     return _sub_surface(sorted(protected)), _sub_surface(remainder)
 
 
+@dataclass(frozen=True)
+class _PatchWork:
+    owners: frozenset[int]
+    protected: Surface3D | None
+    remainder: Surface3D | None
+
+
+def _area_weighted_targets(
+    patches: Sequence[Surface3D], total_faces: int
+) -> tuple[int, ...]:
+    """Allocate a global budget by true 3D area, capped by input face counts."""
+    if not patches:
+        return ()
+    capacities = [len(_triangulate_faces(patch).faces) for patch in patches]
+    budget = max(1, min(total_faces, sum(capacities)))
+    areas = [_surface_area(patch) for patch in patches]
+    total_area = sum(areas)
+    weights = areas if total_area > 0 else [1.0] * len(patches)
+    weight_sum = sum(weights)
+    quotas = [budget * weight / weight_sum for weight in weights]
+    targets = [
+        min(capacity, max(1, int(quota)))
+        for quota, capacity in zip(quotas, capacities, strict=True)
+    ]
+
+    remaining = budget - sum(targets)
+    order = sorted(
+        range(len(patches)),
+        key=lambda index: (quotas[index] - int(quotas[index]), areas[index]),
+        reverse=True,
+    )
+    while remaining > 0:
+        changed = False
+        for index in order:
+            if targets[index] >= capacities[index]:
+                continue
+            targets[index] += 1
+            remaining -= 1
+            changed = True
+            if remaining == 0:
+                break
+        if not changed:
+            break
+    return tuple(targets)
+
+
+def _decimation_targets(
+    patches: Sequence[Surface3D], options: DecimationOptions3D
+) -> tuple[str, int, tuple[int, ...]]:
+    if options.target_edge_length is not None:
+        targets = tuple(_single_patch_target(patch, options) for patch in patches)
+        return "edge_length", sum(targets), targets
+    if options.target_faces is not None:
+        targets = tuple(options.target_faces for _ in patches)
+        return "legacy_per_patch", sum(targets), targets
+    requested = options.target_total_faces or DEFAULT_TARGET_TOTAL_FACES
+    return "total_faces", requested, _area_weighted_targets(patches, requested)
+
+
 def decimate_conforming_3d_surfaces(
     surfaces: Sequence[Surface3D],
     *,
@@ -492,19 +592,74 @@ def decimate_conforming_3d_surfaces(
     self-touching seams are excluded from decimation so nearly tangent
     sheets keep their exact, conforming triangulation.
     """
-    decimator = decimator or partial(decimate_3d_patch)
+    surfaces, _ = decimate_conforming_3d_surfaces_with_report(
+        surfaces,
+        decimator=decimator,
+        seam_protection_rings=seam_protection_rings,
+    )
+    return surfaces
+
+
+def decimate_conforming_3d_surfaces_with_report(
+    surfaces: Sequence[Surface3D],
+    *,
+    options: DecimationOptions3D | None = None,
+    decimator: SurfaceDecimator3D | None = None,
+    seam_protection_rings: int = SEAM_PROTECTION_RINGS,
+) -> tuple[tuple[Surface3D, ...], DecimationReport]:
+    """Decimate conforming patches and report the effective global budget."""
+    options = options or DecimationOptions3D()
     builders = [_SurfaceBuilder() for _ in surfaces]
+    work: list[_PatchWork] = []
+    original_faces = 0
     for label, patch in _patch_groups(surfaces):
+        original_faces += len(_triangulate_faces(patch).faces)
         protected, remainder = _split_seam_neighborhood(
             patch, rings=seam_protection_rings
         )
-        decimated = decimator(remainder) if remainder is not None else None
-        for piece in (protected, decimated):
+        work.append(_PatchWork(label, protected, remainder))
+
+    remainders = tuple(item.remainder for item in work if item.remainder is not None)
+    mode, requested, targets = _decimation_targets(remainders, options)
+    target_iterator = iter(targets)
+    protected_faces = 0
+    boundary_limited_faces = 0
+    achieved_faces = 0
+    for item in work:
+        target = next(target_iterator) if item.remainder is not None else None
+        if item.remainder is None:
+            decimated = None
+        elif decimator is not None:
+            decimated = decimator(item.remainder)
+        else:
+            decimated = decimate_3d_patch(
+                item.remainder,
+                options,
+                target_faces=target,
+            )
+        if item.protected is not None:
+            protected_faces += len(item.protected.faces)
+        if decimated is not None and target is not None:
+            boundary_limited_faces += max(0, len(decimated.faces) - target)
+        achieved_faces += sum(
+            len(piece.faces)
+            for piece in (item.protected, decimated)
+            if piece is not None
+        )
+        for piece in (item.protected, decimated):
             if piece is None:
                 continue
-            for index in label:
+            for index in item.owners:
                 builders[index].add_faces(piece, piece.faces)
-    return tuple(builder.build() for builder in builders)
+    report = DecimationReport(
+        mode=mode,
+        requested_faces=requested,
+        original_faces=original_faces,
+        achieved_faces=achieved_faces,
+        protected_faces=protected_faces,
+        boundary_limited_faces=boundary_limited_faces,
+    )
+    return tuple(builder.build() for builder in builders), report
 
 
 def _fan_triangles(surface: Surface3D) -> np.ndarray:
@@ -872,11 +1027,10 @@ def build_3d_surface(
     and no decimator skips decimation entirely.
     """
     decimation = decimation or DecimationOptions3D()
-    if decimator is None and decimation.enabled:
-        decimator = partial(decimate_3d_patch, options=decimation)
-    if decimator is not None:
-        surfaces = decimate_conforming_3d_surfaces(
+    if decimation.enabled or decimator is not None:
+        surfaces, _ = decimate_conforming_3d_surfaces_with_report(
             surfaces,
+            options=decimation,
             decimator=decimator,
             seam_protection_rings=seam_protection_rings,
         )
