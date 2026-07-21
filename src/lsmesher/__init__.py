@@ -24,6 +24,7 @@ from lsmesher.results import (
     MeshResult3D,
     TetrahedralMesh3D,
 )
+from lsmesher.validation import ValidationIssue, ValidationReport, validate
 
 __all__ = [
     "BuildOptions",
@@ -47,7 +48,10 @@ __all__ = [
     "TetGenError",
     "TetrahedralMesh3D",
     "TriangleError",
+    "ValidationIssue",
+    "ValidationReport",
     "build_from_files",
     "build_from_viennaps",
     "materials_from_viennaps",
+    "validate",
 ]

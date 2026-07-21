@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import random
 from typing import TYPE_CHECKING, Protocol
 
 from lsmesher import geometry_2d as geometry2d
@@ -127,6 +128,35 @@ def default_2d_attribute_sampler(
         return geometry2d.sampling(layer.points, layer.edges)
     except RuntimeError:
         return geometry2d.centroid(layer.points)
+
+
+def seeded_2d_attribute_sampler(seed: int) -> AttributeSampler2D:
+    """Create a repeatable region sampler without changing global RNG state."""
+    rng = random.Random(seed)  # noqa: S311
+
+    def sample(
+        layer: Layer2D,
+        previous: Layer2D | None,
+        *,
+        originally_closed: bool,
+    ) -> Point2D:
+        if previous is not None and not originally_closed:
+            try:
+                return geometry2d.constrained_sampling(
+                    layer.points,
+                    layer.edges,
+                    previous.points,
+                    previous.edges,
+                    rng=rng,
+                )
+            except RuntimeError:
+                return geometry2d.centroid(layer.points)
+        try:
+            return geometry2d.sampling(layer.points, layer.edges, rng=rng)
+        except RuntimeError:
+            return geometry2d.centroid(layer.points)
+
+    return sample
 
 
 def collect_2d_attributes(

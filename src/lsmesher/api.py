@@ -6,7 +6,13 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Literal, Protocol, TypeAlias, cast, overload
 
 from lsmesher.geometry_types import Edge, Face, Point2D, Point3D
-from lsmesher.pipeline_2d import build_2d_poly_geometry, read_2d_layers
+from lsmesher.pipeline_2d import (
+    AttributeSampler2D,
+    build_2d_poly_geometry,
+    default_2d_attribute_sampler,
+    read_2d_layers,
+    seeded_2d_attribute_sampler,
+)
 from lsmesher.pipeline_3d import (
     BOTTOM_MARGIN,
     SEAM_PROTECTION_RINGS,
@@ -64,6 +70,13 @@ class BuildOptions:
     bottom_margin: float = BOTTOM_MARGIN
     seam_protection_rings: int = SEAM_PROTECTION_RINGS
     decimation: DecimationOptions3D = field(default_factory=DecimationOptions3D)
+    random_seed: int | None = None
+
+
+def _sampler(config: BuildOptions) -> AttributeSampler2D:
+    if config.random_seed is None:
+        return default_2d_attribute_sampler
+    return seeded_2d_attribute_sampler(config.random_seed)
 
 
 def layer_from_viennals(mesh: ViennaLSMesh) -> Layer2D:
@@ -157,6 +170,7 @@ def build_from_files(
             read_2d_layers(files),
             epsilon=config.epsilon,
             detect_holes=config.detect_holes,
+            sampler=_sampler(config),
         )
     return build_3d_surface(
         read_3d_surfaces(files),
@@ -198,6 +212,7 @@ def build_from_viennaps(
             tuple(layer_from_viennals(mesh) for mesh in meshes),
             epsilon=config.epsilon,
             detect_holes=config.detect_holes,
+            sampler=_sampler(config),
         )
     return build_3d_surface(
         tuple(surface_from_viennals(mesh) for mesh in meshes),

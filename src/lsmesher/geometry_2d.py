@@ -4,12 +4,18 @@ from __future__ import annotations
 
 import random
 from collections import defaultdict
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Protocol, cast
 
 from lsmesher.geometry_types import Edge, Point2D
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
+
+
+class RandomSource(Protocol):
+    """Uniform random source used for region sampling."""
+
+    def uniform(self, a: float, b: float) -> float: ...
 
 
 def triangle_area(p1: Point2D, p2: Point2D, p3: Point2D) -> float:
@@ -182,8 +188,10 @@ def sampling(
     points: Sequence[Point2D],
     edges: Sequence[Edge],
     max_attempts: int = 10000,
+    rng: RandomSource | None = None,
 ) -> Point2D:
     """Sample a point inside a polygon, failing after ``max_attempts``."""
+    rng = rng or cast("RandomSource", random)
 
     def bounding_box(
         points: Sequence[Point2D],
@@ -198,13 +206,13 @@ def sampling(
         return Point2D(x0, y0), Point2D(x1, y1)
 
     bbp1, bbp2 = bounding_box(points)
-    x = random.uniform(bbp1.x, bbp2.x)  # noqa: S311
-    y = random.uniform(bbp1.y, bbp2.y)  # noqa: S311
+    x = rng.uniform(bbp1.x, bbp2.x)
+    y = rng.uniform(bbp1.y, bbp2.y)
     p = Point2D(x, y)
     attempts = 0
     while not point_in_polygon(p, points, edges) and attempts < max_attempts:
-        x = random.uniform(bbp1.x, bbp2.x)  # noqa: S311
-        y = random.uniform(bbp1.y, bbp2.y)  # noqa: S311
+        x = rng.uniform(bbp1.x, bbp2.x)
+        y = rng.uniform(bbp1.y, bbp2.y)
         p = Point2D(x, y)
         attempts += 1
     if attempts >= max_attempts:
@@ -231,14 +239,16 @@ def point_in_polygon(
     return inside
 
 
-def constrained_sampling(
+def constrained_sampling(  # noqa: PLR0913
     points: Sequence[Point2D],
     edges: Sequence[Edge],
     other_points: Sequence[Point2D],
     other_edges: Sequence[Edge],
     max_attempts: int = 10000,
+    rng: RandomSource | None = None,
 ) -> Point2D:
     """Sample inside the first polygon and outside the second."""
+    rng = rng or cast("RandomSource", random)
 
     def bounding_box(
         points: Sequence[Point2D],
@@ -253,16 +263,16 @@ def constrained_sampling(
         return Point2D(x0, y0), Point2D(x1, y1)
 
     bbp1, bbp2 = bounding_box(points)
-    x = random.uniform(bbp1.x, bbp2.x)  # noqa: S311
-    y = random.uniform(bbp1.y, bbp2.y)  # noqa: S311
+    x = rng.uniform(bbp1.x, bbp2.x)
+    y = rng.uniform(bbp1.y, bbp2.y)
     p = Point2D(x, y)
     attempts = 0
     while (
         not point_in_polygon(p, points, edges)
         or point_in_polygon(p, other_points, other_edges)
     ) and attempts < max_attempts:
-        x = random.uniform(bbp1.x, bbp2.x)  # noqa: S311
-        y = random.uniform(bbp1.y, bbp2.y)  # noqa: S311
+        x = rng.uniform(bbp1.x, bbp2.x)
+        y = rng.uniform(bbp1.y, bbp2.y)
         p = Point2D(x, y)
         attempts += 1
     if attempts >= max_attempts:
