@@ -1,9 +1,29 @@
 """Create simulation-ready meshes from ViennaLS and ViennaPS interfaces."""
 
-from lsmesher.api import BuildOptions, build_from_files, build_from_viennaps
+from lsmesher.api import (
+    BuildOptions,
+    build_from_files,
+    build_from_viennaps,
+    materials_from_viennaps,
+)
+from lsmesher.errors import (
+    InvalidGeometryError,
+    LsmesherError,
+    MesherError,
+    MesherNotFoundError,
+    TetGenError,
+    TriangleError,
+)
 from lsmesher.geometry_types import Edge, Face, Point2D, Point3D, Region3D
 from lsmesher.pipeline_3d import DecimationOptions3D
 from lsmesher.pipeline_types import Geometry2D, Layer2D, Surface3D
+from lsmesher.results import (
+    MaterialInfo,
+    MeshResult,
+    MeshResult2D,
+    MeshResult3D,
+    TetrahedralMesh3D,
+)
 
 __all__ = [
     "BuildOptions",
@@ -11,11 +31,23 @@ __all__ = [
     "Edge",
     "Face",
     "Geometry2D",
+    "InvalidGeometryError",
     "Layer2D",
+    "LsmesherError",
+    "MaterialInfo",
+    "MeshResult",
+    "MeshResult2D",
+    "MeshResult3D",
+    "MesherError",
+    "MesherNotFoundError",
     "Point2D",
     "Point3D",
     "Region3D",
     "Surface3D",
+    "TetGenError",
+    "TetrahedralMesh3D",
+    "TriangleError",
     "build_from_files",
     "build_from_viennaps",
+    "materials_from_viennaps",
 ]

@@ -21,6 +21,8 @@ if TYPE_CHECKING:
     from pathlib import Path
     from typing import Any
 
+    from lsmesher.results import MaterialInfo
+
 Dimension: TypeAlias = Literal[2, 3]
 BuiltGeometry: TypeAlias = Geometry2D | Surface3D
 
@@ -39,6 +41,18 @@ class ViennaPSDomain(Protocol):
     """Minimal part of ``viennaps.Domain`` consumed by lsmesher."""
 
     def getLevelSets(self) -> Sequence[object]: ...  # noqa: N802
+
+    def getMaterialMap(self) -> ViennaPSMaterialMap: ...  # noqa: N802
+
+
+class ViennaPSMaterialMap(Protocol):
+    """Material lookup operations exposed by ViennaPS."""
+
+    def size(self) -> int: ...
+
+    def getMaterialIdAtIdx(self, index: int) -> int: ...  # noqa: N802
+
+    def getMaterialAtIdx(self, index: int) -> object: ...  # noqa: N802
 
 
 @dataclass(frozen=True)
@@ -95,6 +109,21 @@ def _viennals_meshes(
         msg = f"ViennaPS domain does not contain {dimension}D surface elements"
         raise ValueError(msg)
     return tuple(meshes)
+
+
+def materials_from_viennaps(domain: ViennaPSDomain) -> tuple[MaterialInfo, ...]:
+    """Return the ViennaPS material corresponding to each 1-based region."""
+    from lsmesher.results import MaterialInfo  # noqa: PLC0415
+
+    material_map = domain.getMaterialMap()
+    return tuple(
+        MaterialInfo(
+            region=index + 1,
+            material_id=material_map.getMaterialIdAtIdx(index),
+            name=str(material_map.getMaterialAtIdx(index)).split(".")[-1],
+        )
+        for index in range(material_map.size())
+    )
 
 
 @overload
