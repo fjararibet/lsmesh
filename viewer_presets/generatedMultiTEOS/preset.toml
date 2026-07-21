@@ -1,0 +1,7 @@
+name = "Multi TEOS"
+description = "Loads generated Multi TEOS ViennaPS outputs."
+script = "../../viennaps_examples/TEOSTrenchDeposition/multiTEOS.py"
+config = "../../viennaps_examples/TEOSTrenchDeposition/multiTEOS_config.txt"
+dimension = 3
+outputs = "../../viewer_outputs/viennaps_examples/runs/multiTEOS/interface_*.vtp"
+original_outputs = "original_mesh_volume.vtu"

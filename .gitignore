@@ -1,0 +1,28 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Compiled binaries (built by hatch hook)
+src/lsmesher/bin/
+
+# Output files
+*.node
+*.ele
+*.poly
+*.off
+*.vtp
+*.vtu
+
+# Local Streamlit example datasets
+.viewer_cache/
+viewer_outputs/
+
+# Virtual environments
+.venv
+
+# Nix build output
+result

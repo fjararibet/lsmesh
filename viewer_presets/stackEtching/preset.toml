@@ -1,0 +1,6 @@
+name = "Stack Etching"
+description = "Generate stack etching interfaces from config.txt."
+script = "stackEtching.py"
+config = "config.txt"
+dimension = 2
+original_outputs = "original_mesh_volume.vtu"

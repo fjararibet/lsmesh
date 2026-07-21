@@ -1,0 +1,6 @@
+name = "Trench Deposition"
+description = "Generate trench deposition interfaces from config.txt."
+script = "trenchDeposition.py"
+config = "config.txt"
+dimension = 3
+original_outputs = "original_mesh.vtp"

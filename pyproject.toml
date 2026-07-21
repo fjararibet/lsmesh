@@ -1,0 +1,103 @@
+[project]
+name = "lsmesher"
+version = "0.1.0"
+description = "Convert ViennaLS/ViennaPS interfaces into simulation-ready meshes"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "meshio~=5.3.5",
+    "pymeshlab~=2025.7",
+    "scipy~=1.16.3",
+    "viennaps>=4.5.0",
+    "viennals>=5.7.r",
+    "vtk~=9.4.2",
+    "pyvista>=0.48.4",
+    "streamlit>=1.57.0",
+    "plotly>=6.8.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.hooks.custom]
+path = "hatch_build_triangle.py"
+
+[dependency-groups]
+dev = [
+    "hatchling>=1.28.0",
+    "pytest>=9.0.2",
+    "ruff>=0.15.4",
+    "ty>=0.0.19",
+]
+
+[project.scripts]
+lsmesher = "lsmesher.cli:main"
+lsmesher-viewer = "lsmesher.viewer:main"
+
+[tool.ruff]
+line-length = 88
+indent-width = 4
+target-version = "py311"
+
+[tool.ruff.lint]
+select = [
+    "ALL",  # Enable all rules
+]
+ignore = [
+    "COM812",  # Trailing comma missing - conflicts with formatter
+    "D100",    # Missing docstring in public module
+    "D104",    # Missing docstring in public package
+    "D203",    # 1 blank line required before class docstring - conflicts with D211
+    "D212",    # Multi-line docstring summary should start at the first line - conflicts with D213
+    "E501",    # Line too long - handled by formatter
+    "ISC001",  # Implicit string concatenation - conflicts with formatter
+    "PLR2004", # Magic value used in comparison
+    "TD002",   # Missing author in TODO
+    "TD003",   # Missing issue link in TODO
+    "FIX002",  # Line contains TODO, consider resolving the issue
+    "S603",    # Subprocess call - expected in CLI
+    "S607",    # Partial executable path - expected in CLI
+    "PGH003",  # Allow blanket type: ignore for argparse compatibility
+]
+
+[tool.ruff.lint.per-file-ignores]
+"src/lsmesher/cli.py" = ["S606"]
+"examples/**/*" = ["ALL"]
+"viewer_presets/**/*" = ["ALL"]
+"interface_extraction_example/**/*" = ["ALL"]
+"interface_extraction_example_3D/**/*" = ["ALL"]
+"tests/**/*" = ["S101", "ANN001", "ANN201", "ANN202", "PLR2004", "PTH110", "PTH118", "PTH120", "RET504", "SIM108", "TRY300", "RUF059", "D200", "D205", "D415", "ARG001", "ARG002", "ERA001"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+
+[tool.ruff.lint.pep8-naming]
+classmethod-decorators = ["classmethod"]
+staticmethod-decorators = ["staticmethod"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["lsmesher"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff.lint.flake8-annotations]
+allow-star-arg-any = false
+ignore-fully-untyped = false
+mypy-init-return = true
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "all"
+
+[tool.ruff.lint.flake8-unused-arguments]
+ignore-variadic-names = true

@@ -1,0 +1,6 @@
+name = "Hole Etching"
+description = "Generate hole etching interfaces from config.txt."
+script = "holeEtching.py"
+config = "config.txt"
+dimension = 3
+original_outputs = "original_mesh.vtp"

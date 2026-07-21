@@ -1,0 +1,6 @@
+name = "Blazed Gratings Etching"
+description = "Generate blazed grating etching interfaces from config.txt."
+script = "blazedGratingsEtching.py"
+config = "config.txt"
+dimension = 2
+original_outputs = "original_mesh.vtp"

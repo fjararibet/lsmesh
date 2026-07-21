@@ -1,0 +1,6 @@
+name = "Faraday Cage Etching"
+description = "Generate Faraday cage etching interfaces from config.txt."
+script = "faradayCageEtching.py"
+config = "config.txt"
+dimension = 3
+original_outputs = "original_mesh.vtp"
