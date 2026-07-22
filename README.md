@@ -1,8 +1,9 @@
-# lsmesher
+# lsmesh
 
-`lsmesher` converts 2D and 3D ViennaLS/ViennaPS interface files into polygonal
-and volume meshes. It includes a command-line interface and a Streamlit/PyVista
-viewer with runnable example presets.
+The `lsmesh` distribution provides the `lsmesher` Python package. It converts
+2D and 3D ViennaLS/ViennaPS interface files into polygonal and volume meshes and
+includes a command-line interface and a Streamlit/PyVista viewer with runnable
+example presets.
 
 ## Run with Nix
 
@@ -42,8 +43,8 @@ uv run lsmesher-viewer
 For a library-only installation, viewer dependencies are optional:
 
 ```bash
-uv add lsmesher
-uv add "lsmesher[viewer]"  # only when the Streamlit viewer is needed
+uv add lsmesh
+uv add "lsmesh[viewer]"  # only when the Streamlit viewer is needed
 ```
 
 ## Python API and ViennaPS

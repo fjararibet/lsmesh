@@ -590,7 +590,7 @@ wheels = [
 ]
 
 [[package]]
-name = "lsmesher"
+name = "lsmesh"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [

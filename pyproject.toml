@@ -1,5 +1,5 @@
 [project]
-name = "lsmesher"
+name = "lsmesh"
 version = "0.1.0"
 description = "Convert ViennaLS/ViennaPS interfaces into simulation-ready meshes"
 readme = "README.md"
@@ -69,8 +69,8 @@ lsmesher = "lsmesher.cli:main"
 lsmesher-viewer = "lsmesher.viewer_cli:main"
 
 [project.urls]
-Repository = "https://github.com/fjararibet/lsmesher"
-Documentation = "https://github.com/fjararibet/lsmesher/tree/main/docs"
+Repository = "https://github.com/fjararibet/lsmesh"
+Documentation = "https://github.com/fjararibet/lsmesh/tree/main/docs"
 
 [tool.ruff]
 line-length = 88

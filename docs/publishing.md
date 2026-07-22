@@ -18,7 +18,7 @@ nix develop --command zsh -lc 'uv build --clear --sdist'
 ```
 
 Inspect `dist/` before publishing. It should contain only the intended
-`lsmesher-<version>.tar.gz` artifact for this release command. The source archive
+`lsmesh-<version>.tar.gz` artifact for this release command. The source archive
 includes the Triangle sources and their redistribution notice, but no compiled
 `src/lsmesher/bin` files.
 
@@ -33,7 +33,7 @@ Configure the PyPI trusted publisher with these values:
 
 ```text
 Owner:       fjararibet
-Repository:  lsmesher
+Repository:  lsmesh
 Workflow:    publish.yml
 Environment: pypi
 ```
