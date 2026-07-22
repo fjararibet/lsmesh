@@ -46,11 +46,22 @@ remain the public result when no IDs were supplied.
 ## Nested ViennaPS Interfaces
 
 ViennaPS level sets are nested and a material region is not necessarily below
-the corresponding local surface. For upper layers, lsmesher samples between a
-component and the nearest separated crossing of the preceding interface in
-either vertical direction. This matters for structures such as the Bosch mask:
-sampling downward unconditionally can place both mask seeds inside silicon,
-causing TetGen to regard the actual mask volumes as unmarked regions.
+the corresponding local surface. For every connected component of an upper
+layer, lsmesher deterministically evaluates the centroid ray of each candidate
+face. It brackets the face against the nearest separated crossing of the
+preceding interface in either vertical direction and selects the interval with
+the greatest clearance. The region seed is the interval midpoint.
+
+Disconnected components are searched independently and receive separate
+temporary TetGen attributes. Those attributes still decode to the same ViennaPS
+ID when the components share a material. A connected material with several
+openings remains one edge-connected component and receives one seed.
+
+This matters for structures such as the Bosch mask: sampling downward from the
+first acceptable face can place both mask seeds inside silicon, causing TetGen
+to regard the actual mask volumes as unmarked regions. Component-wide interval
+selection instead finds the wider interval between the silicon interface and
+the mask exterior.
 
 The generated mesh is still checked after decoding. Every material from the
 ViennaPS map must be present, and attributes that cannot be traced through the

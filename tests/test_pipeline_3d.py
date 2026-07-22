@@ -2,6 +2,7 @@
 
 import argparse
 
+import numpy as np
 import pytest
 
 from lsmesher import cli
@@ -9,6 +10,7 @@ from lsmesher.geometry_types import Face, Point3D, Region3D
 from lsmesher.pipeline_3d import (
     DecimationOptions3D,
     _area_weighted_targets,
+    _component_region_point,
     _has_fold_edges,
     _single_patch_target,
     _split_seam_neighborhood,
@@ -529,6 +531,36 @@ def test_collect_3d_regions_samples_each_disconnected_component():
         Point3D(2.5, 0.5, 0.5),
     }
     assert [region.material for region in regions] == [1, 2, 2]
+
+
+def test_upper_region_sampling_selects_widest_deterministic_interval(monkeypatch):
+    surface = Surface3D(
+        points=(
+            Point3D(0.0, 0.0, 0.0),
+            Point3D(1.0, 0.0, 0.0),
+            Point3D(0.0, 1.0, 0.0),
+            Point3D(2.0, 0.0, 0.0),
+            Point3D(3.0, 0.0, 0.0),
+            Point3D(2.0, 1.0, 0.0),
+        ),
+        faces=(Face((0, 1, 2)), Face((3, 4, 5))),
+    )
+
+    def crossings(_triangles, x, _y):
+        return (0.2,) if x < 1.0 else (1.0,)
+
+    monkeypatch.setattr("lsmesher.pipeline_3d._vertical_hits", crossings)
+
+    point = _component_region_point(
+        surface.faces,
+        surface,
+        np.empty((0, 3, 3)),
+        -1.0,
+        min_gap=0.01,
+        bidirectional=True,
+    )
+
+    assert point == Point3D(pytest.approx(7 / 3), pytest.approx(1 / 3), 0.5)
 
 
 def test_merge_3d_surfaces_keeps_material_ids_attached_when_sorting():

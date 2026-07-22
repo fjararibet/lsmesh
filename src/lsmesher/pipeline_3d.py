@@ -815,7 +815,7 @@ def _component_region_point(  # noqa: PLR0913
         gap = abs(centroid.z - other_z)
         if best is None or gap > best[0]:
             best = (gap, centroid.x, centroid.y, (centroid.z + other_z) / 2)
-        if best[0] >= min_gap:
+        if best[0] >= min_gap and not bidirectional:
             break
     if best is None:
         msg = "Cannot sample region point: component has no faces."
