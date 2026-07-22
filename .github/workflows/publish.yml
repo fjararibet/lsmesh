@@ -1,0 +1,34 @@
+name: Publish
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  pypi:
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Install Python
+        run: uv python install 3.11
+
+      - name: Verify tag matches package version
+        run: test "v$(uv version --short)" = "$GITHUB_REF_NAME"
+
+      - name: Build source distribution
+        run: uv build --sdist
+
+      - name: Publish to PyPI
+        run: uv publish dist/*.tar.gz

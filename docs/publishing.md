@@ -22,19 +22,28 @@ Inspect `dist/` before publishing. It should contain only the intended
 includes the Triangle sources and their redistribution notice, but no compiled
 `src/lsmesher/bin` files.
 
-## Publish
+## Publish with GitHub trusted publishing
 
-Create an API token in the PyPI account settings. For the first upload, the
-project does not exist yet, so the token cannot be scoped to this project. After
-the first release creates `lsmesher`, replace it with a project-scoped token.
+The workflow at `.github/workflows/publish.yml` publishes whenever a `v*` tag is
+pushed. It uses GitHub's OIDC identity, so it needs no API token. The workflow
+checks that the tag exactly matches the version in `pyproject.toml`, builds only
+the portable source distribution, and publishes that artifact.
 
-In zsh, read the token without placing it in shell history and publish the exact
-artifact:
+Configure the PyPI trusted publisher with these values:
+
+```text
+Owner:       fjararibet
+Repository:  lsmesher
+Workflow:    publish.yml
+Environment: pypi
+```
+
+For a project that does not exist on PyPI yet, configure it as a pending trusted
+publisher. Release version `0.1.0` with:
 
 ```console
-read -rs "UV_PUBLISH_TOKEN?PyPI token: "; export UV_PUBLISH_TOKEN; echo
-uv publish dist/lsmesher-0.1.0.tar.gz
-unset UV_PUBLISH_TOKEN
+git tag v0.1.0
+git push origin v0.1.0
 ```
 
 Do not publish a wheel from the Nix shell. Portable wheels should later be built

@@ -68,6 +68,10 @@ dev = [
 lsmesher = "lsmesher.cli:main"
 lsmesher-viewer = "lsmesher.viewer_cli:main"
 
+[project.urls]
+Repository = "https://github.com/fjararibet/lsmesher"
+Documentation = "https://github.com/fjararibet/lsmesher/tree/main/docs"
+
 [tool.ruff]
 line-length = 88
 indent-width = 4
