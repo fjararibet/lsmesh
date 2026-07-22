@@ -18,10 +18,10 @@ def _run_in_nix_shell(cmd: list[str]) -> None:
     if nix_shell and Path("shell.nix").exists():
         # Run inside nix-shell
         full_cmd = [nix_shell, "--run", " ".join(cmd)]
-        subprocess.run(full_cmd, check=True)  # noqa: S603
+        subprocess.run(full_cmd, check=True)
     else:
         # Run directly
-        subprocess.run(cmd, check=True)  # noqa: S603
+        subprocess.run(cmd, check=True)
 
 
 class TriangleBuildHook(BuildHookInterface):
@@ -31,6 +31,14 @@ class TriangleBuildHook(BuildHookInterface):
 
     def initialize(self, version: str, build_data: dict) -> None:  # noqa: ARG002
         """Compile Triangle and Show Me binaries and stage them into src/lsmesher/bin/."""
+        if self.target_name != "wheel":
+            return
+
+        # The bundled executables make this a platform-specific wheel. Without
+        # these flags Hatchling would incorrectly label it as py3-none-any.
+        build_data["pure_python"] = False
+        build_data["infer_tag"] = True
+
         root = Path(self.root)
         vendor_dir = root / "vendor" / "triangle"
         bin_dir = root / "src" / "lsmesher" / "bin"

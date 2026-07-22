@@ -4,6 +4,24 @@ version = "0.1.0"
 description = "Convert ViennaLS/ViennaPS interfaces into simulation-ready meshes"
 readme = "README.md"
 requires-python = ">=3.11"
+authors = [
+    { name = "Felipe Jara" },
+]
+keywords = [
+    "level-set",
+    "mesh-generation",
+    "scientific-computing",
+    "viennals",
+    "viennaps",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering",
+]
 dependencies = [
     "pymeshlab~=2025.7",
     "scipy~=1.16.3",
@@ -25,6 +43,15 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.hooks.custom]
 path = "hatch_build_triangle.py"
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "README.md",
+    "hatch_build_triangle.py",
+    "pyproject.toml",
+    "src/lsmesher",
+    "vendor/triangle",
+]
 
 [dependency-groups]
 dev = [
