@@ -81,8 +81,6 @@ def test_all_project_presets_use_sdk_generators(monkeypatch):
         "SiGe Selective Etching",
         "Simple Etching",
         "Single TEOS",
-        "Sputter Deposition 2D",
-        "Sputter Deposition 3D",
         "Stack Etching",
         "Stacked Nanowire Emulation",
         "Trench Deposition",
