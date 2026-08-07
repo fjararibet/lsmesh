@@ -23,9 +23,9 @@ only when a custom domain type cannot be identified.
 The default is `balanced`:
 
 ```python
-mesh(domain, "device.vtu", policy="fast")
-mesh(domain, "device.vtu", policy="balanced")
-mesh(domain, "device.vtu", policy="accurate")
+mesh(domain, "device.vtu", quality="fast")
+mesh(domain, "device.vtu", quality="balanced")
+mesh(domain, "device.vtu", quality="accurate")
 ```
 
 Policies express intent. They control multipliers and acceptance targets rather
@@ -56,14 +56,14 @@ approaching sheets is intentionally deferred to
 
 Automatic mode makes at most three attempts:
 
-1. **scale-aware** — policy-derived surface edge length and TetGen volume;
+1. **scale-aware** — quality-derived surface edge length and TetGen volume;
 2. **safer-surface** — 33% smaller surface target, no optimal vertex placement,
    and a wider protected seam neighborhood;
 3. **no-decimation-recovery** — original interface triangulation and a relaxed
    TetGen radius-edge ratio.
 
 An attempt is retried when geometry validation, Triangle/TetGen, material
-coverage, element correctness, or the policy's soft quality target rejects it.
+coverage, element correctness, or the requested soft quality target rejects it.
 The final attempt may be accepted below the soft shape-quality target, but never
 when a hard correctness check fails.
 
@@ -77,8 +77,8 @@ result = mesh(
 )
 ```
 
-`policy` and `options` are mutually exclusive. Passing both raises immediately
-instead of silently ignoring the policy.
+`quality` and `options` are mutually exclusive. Passing both raises immediately
+instead of silently ignoring the requested quality.
 
 ## Correctness Checks
 
@@ -104,7 +104,7 @@ with edge ratios, element measures, edge-length range, and material coverage.
 Automatic results expose decisions directly:
 
 ```python
-print(result.automatic.policy)
+print(result.automatic.quality)
 print(result.automatic.selected_attempt)
 print(result.automatic.attempts)
 print(result.automatic.quality_target_met)

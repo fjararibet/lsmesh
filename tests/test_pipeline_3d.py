@@ -481,7 +481,7 @@ def test_mesher_options_from_args_reads_quality_and_geometry_flags():
         bottom_margin=0.3,
         seam_protection_rings=4,
     )
-    assert cli._triangle_switches(options) == "-Dq28gA"  # noqa: SLF001
+    assert cli._triangle_switches(options) == "-pDq28gA"  # noqa: SLF001
     assert cli._tetgen_switches(options) == "-pq1.4/15AkRa0.025"  # noqa: SLF001
 
 

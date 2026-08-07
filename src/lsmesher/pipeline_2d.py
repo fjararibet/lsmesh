@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import random
+from itertools import pairwise
 from typing import TYPE_CHECKING, Protocol
 
 from lsmesher import geometry_2d as geometry2d
@@ -184,6 +185,90 @@ def collect_2d_attributes(
     return tuple(attributes)
 
 
+def _region_seed_candidates(  # noqa: C901, PLR0912
+    layer: Layer2D,
+    previous: Layer2D | None,
+    *,
+    originally_closed: bool,
+) -> tuple[Point2D, ...]:
+    """Return seeds for every horizontal component of a material region.
+
+    A single ViennaLS interface can describe a material that is split into
+    disconnected regions (oxide on both sides of a fin, for example). Triangle
+    propagates a region attribute only within one connected PSLG region, so one
+    random point per interface is insufficient.
+    """
+    comparison = previous if previous is not None and not originally_closed else None
+    all_points = (*layer.points, *(comparison.points if comparison is not None else ()))
+    y_values = sorted({point.y for point in all_points})
+    bands: list[list[tuple[float, float, Point2D]]] = []
+
+    def intersections(candidate_layer: Layer2D, y: float) -> list[float]:
+        result: list[float] = []
+        for edge in candidate_layer.edges:
+            start = candidate_layer.points[edge.start]
+            end = candidate_layer.points[edge.end]
+            if (start.y > y) == (end.y > y):
+                continue
+            result.append(start.x + (end.x - start.x) * (y - start.y) / (end.y - start.y))
+        return result
+
+    for lower, upper in pairwise(y_values):
+        if upper <= lower:
+            continue
+        y = (lower + upper) / 2
+        x_values = intersections(layer, y)
+        if comparison is not None:
+            x_values.extend(intersections(comparison, y))
+        unique_x = sorted(set(x_values))
+        band: list[tuple[float, float, Point2D]] = []
+        for left, right in pairwise(unique_x):
+            if right <= left:
+                continue
+            point = Point2D((left + right) / 2, y)
+            if not geometry2d.point_in_polygon(point, layer.points, layer.edges):
+                continue
+            if comparison is not None and geometry2d.point_in_polygon(
+                point, comparison.points, comparison.edges
+            ):
+                continue
+            band.append((left, right, point))
+        # Keep empty bands: they are topological gaps and must prevent the
+        # union step below from joining components across empty space.
+        bands.append(band)
+
+    intervals = [interval for band in bands for interval in band]
+    if not intervals:
+        return ()
+    indices = {id(interval): index for index, interval in enumerate(intervals)}
+    parents = list(range(len(intervals)))
+
+    def find(index: int) -> int:
+        while parents[index] != index:
+            parents[index] = parents[parents[index]]
+            index = parents[index]
+        return index
+
+    def union(first: int, second: int) -> None:
+        first_root, second_root = find(first), find(second)
+        if first_root != second_root:
+            parents[second_root] = first_root
+
+    for previous_band, current_band in pairwise(bands):
+        for first in previous_band:
+            for second in current_band:
+                if min(first[1], second[1]) > max(first[0], second[0]):
+                    union(indices[id(first)], indices[id(second)])
+
+    widest_by_component: dict[int, tuple[float, Point2D]] = {}
+    for index, (left, right, point) in enumerate(intervals):
+        root = find(index)
+        candidate = (right - left, point)
+        if root not in widest_by_component or candidate[0] > widest_by_component[root][0]:
+            widest_by_component[root] = candidate
+    return tuple(candidate[1] for candidate in widest_by_component.values())
+
+
 def merge_2d_layers(
     layers: Sequence[Layer2D],
     *,
@@ -238,18 +323,34 @@ def build_2d_poly_geometry(
         leftmost_point=leftmost,
         rightmost_point=rightmost,
     )
-    attributes = collect_2d_attributes(
+    primary_attributes = collect_2d_attributes(
         closed_layers,
         enabled=detect_holes,
         sampler=sampler,
         original_layers=layers,
     )
-    attribute_ids = (
-        tuple(material_ids) if attributes and material_ids is not None else ()
-    )
-    if attribute_ids and len(attribute_ids) != len(attributes):
+    if material_ids is not None and len(material_ids) != len(closed_layers):
         msg = "ViennaPS material count does not match the number of 2D level sets"
         raise ValueError(msg)
+    attributes: list[Point2D] = []
+    attribute_ids: list[int] = []
+    previous: Layer2D | None = None
+    if detect_holes:
+        for index, (layer, source_layer, primary) in enumerate(
+            zip(closed_layers, layers, primary_attributes, strict=True)
+        ):
+            candidates = _region_seed_candidates(
+                layer,
+                previous,
+                originally_closed=geometry2d.is_closed(
+                    source_layer.points, source_layer.edges
+                ),
+            )
+            seeds = candidates or (primary,)
+            material_id = material_ids[index] if material_ids is not None else index + 1
+            attributes.extend(seeds)
+            attribute_ids.extend([material_id] * len(seeds))
+            previous = layer
     merged = merge_2d_layers(
         closed_layers,
         attributes=attributes,

@@ -20,7 +20,7 @@ from lsmesher.errors import (
     UnsupportedSourceError,
 )
 from lsmesher.geometry_types import Edge, Face, Point2D, Point3D, Region3D
-from lsmesher.meshing import MesherOptions, MeshingOptions, MeshPolicy, mesh, write
+from lsmesher.meshing import MesherOptions, MeshingOptions, MeshQuality, mesh, write
 from lsmesher.pipeline_3d import DecimationOptions3D, DecimationReport
 from lsmesher.pipeline_types import Geometry2D, Layer2D, Surface3D
 from lsmesher.presets import run_preset
@@ -54,7 +54,7 @@ __all__ = [
     "MaterialInfo",
     "MeshAttemptReport",
     "MeshOptions",
-    "MeshPolicy",
+    "MeshQuality",
     "MeshQualityReport",
     "MeshResult",
     "MeshResult2D",

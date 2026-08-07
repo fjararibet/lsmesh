@@ -9,7 +9,7 @@ therefore makes mesh density depend on the material topology: splitting a
 surface into more patches can increase the final face count even when its shape
 and area are unchanged.
 
-The default policy instead treats all unique, decimatable patches as one surface
+The default quality preset instead treats all unique, decimatable patches as one surface
 complex and distributes a global budget by true 3D surface area.
 
 ## Global Face Budget

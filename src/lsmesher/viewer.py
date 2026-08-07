@@ -1288,7 +1288,7 @@ def _show_automatic_report(output_path: Path) -> None:
     automatic = content["automatic"]
     quality = content.get("quality")
     summary = (
-        f"Automatic meshing: {automatic['policy']} policy, "
+        f"Automatic meshing: {automatic['quality']} quality, "
         f"{automatic['selected_attempt']} attempt, "
         f"{len(automatic['attempts'])} attempt(s)"
     )
@@ -1298,7 +1298,7 @@ def _show_automatic_report(output_path: Path) -> None:
             f"5th-percentile shape quality {quality['shape_quality_p05']:.3f}"
         )
     if not automatic["quality_target_met"]:
-        summary += "; correctness passed but the policy quality target was not met"
+        summary += "; correctness passed but the requested quality target was not met"
     st.caption(summary + ".")
 
 

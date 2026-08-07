@@ -88,7 +88,7 @@ class MeshAttemptReport:
 class AutomaticMeshReport:
     """Decisions and recovery attempts made by automatic meshing."""
 
-    policy: Literal["fast", "balanced", "accurate"]
+    quality: Literal["fast", "balanced", "accurate"]
     dimension: Literal[2, 3]
     characteristic_length: float | None
     grid_spacing: float | None
@@ -111,7 +111,7 @@ class AutomaticMeshReport:
         )
         if self.quality_target_met:
             return messages
-        return (*messages, f"The {self.policy} soft quality target was not met")
+        return (*messages, f"The {self.quality} soft quality target was not met")
 
 
 class _MeshResultMixin:

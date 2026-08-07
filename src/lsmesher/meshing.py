@@ -77,7 +77,7 @@ from lsmesher.results import (
 from lsmesher.validation import ValidationReport, validate
 
 OutputFormat: TypeAlias = Literal["poly", "off", "vtp", "vtu"]
-MeshPolicy: TypeAlias = Literal["fast", "balanced", "accurate"]
+MeshQuality: TypeAlias = Literal["fast", "balanced", "accurate"]
 MeshInput: TypeAlias = (
     ViennaPSDomain | str | Path | Sequence[str | Path] | Geometry2D | Surface3D
 )
@@ -168,7 +168,7 @@ def mesh(
     *,
     dimension: Literal[2] = 2,
     options: MeshingOptions | None = None,
-    policy: MeshPolicy | None = None,
+    quality: MeshQuality | None = None,
 ) -> MeshResult2D: ...
 
 
@@ -179,7 +179,7 @@ def mesh(
     *,
     dimension: Literal[3] = 3,
     options: MeshingOptions | None = None,
-    policy: MeshPolicy | None = None,
+    quality: MeshQuality | None = None,
 ) -> MeshResult3D: ...
 
 
@@ -190,7 +190,7 @@ def mesh(
     *,
     dimension: Literal[2],
     options: MeshingOptions | None = None,
-    policy: MeshPolicy | None = None,
+    quality: MeshQuality | None = None,
 ) -> MeshResult2D: ...
 
 
@@ -201,7 +201,7 @@ def mesh(
     *,
     dimension: Literal[3],
     options: MeshingOptions | None = None,
-    policy: MeshPolicy | None = None,
+    quality: MeshQuality | None = None,
 ) -> MeshResult3D: ...
 
 
@@ -212,7 +212,7 @@ def mesh(
     *,
     dimension: None = None,
     options: MeshingOptions | None = None,
-    policy: MeshPolicy | None = None,
+    quality: MeshQuality | None = None,
 ) -> MeshResult2D | MeshResult3D: ...
 
 
@@ -222,7 +222,7 @@ def mesh(
     *,
     dimension: Dimension | None = None,
     options: MeshingOptions | None = None,
-    policy: MeshPolicy | None = None,
+    quality: MeshQuality | None = None,
 ) -> MeshResult2D | MeshResult3D:
     """Build and mesh a geometry using automatic safe defaults.
 
@@ -234,24 +234,24 @@ def mesh(
             Prefer omitting this and calling ``result.write(...)``.
         dimension: Explicitly select 2D or 3D. It is normally inferred.
         options: Expert configuration. Supplying it selects a single attempt and
-            cannot be combined with ``policy``.
-        policy: Automatic goal: ``fast``, ``balanced`` (default), or ``accurate``.
+            cannot be combined with ``quality``.
+        quality: Automatic goal: ``fast``, ``balanced`` (default), or ``accurate``.
 
     Returns:
         A dimensional result containing geometry, generated elements, quality,
         validation, materials, and automatic-attempt metadata.
 
     Raises:
-        ValueError: If arguments conflict or dimension/policy is invalid.
+        ValueError: If arguments conflict or dimension/quality is invalid.
         UnsupportedSourceError: If ``source`` is not a supported value.
         LsmesherError: If conversion, validation, or meshing fails.
     """
     normalized_source = _normalize_source(source)
     resolved_dimension = _resolve_dimension(normalized_source, dimension)
-    if options is not None and policy is not None:
-        msg = "policy and options are mutually exclusive; omit one of them"
+    if options is not None and quality is not None:
+        msg = "quality and options are mutually exclusive; omit one of them"
         raise ValueError(msg)
-    selected_policy = policy or "balanced"
+    selected_quality = quality or "balanced"
     if output is None:
         with tempfile.TemporaryDirectory(prefix="lsmesher-result-") as directory:
             temporary_output = Path(directory) / (
@@ -268,7 +268,7 @@ def mesh(
                 temporary_output,
                 resolved_dimension,
                 options,
-                selected_policy,
+                selected_quality,
             )
             return replace(result, output_paths=(), log_path=None)
     return _run_mesh(
@@ -276,7 +276,7 @@ def mesh(
         Path(output),
         resolved_dimension,
         options,
-        selected_policy,
+        selected_quality,
     )
 
 
@@ -285,7 +285,7 @@ def _run_mesh(
     output: Path,
     dimension: Dimension,
     options: MeshingOptions | None,
-    policy: MeshPolicy,
+    quality: MeshQuality,
 ) -> MeshResult2D | MeshResult3D:
     if options is not None:
         result = _mesh_once(source, output, dimension, options)
@@ -294,7 +294,7 @@ def _run_mesh(
         source,
         output,
         dimension,
-        policy=policy,
+        quality=quality,
     )
 
 
@@ -498,19 +498,19 @@ def _characteristic_length(source: MeshInput, dimension: Dimension) -> float | N
     return float(np.median(positive)) if positive.size else None
 
 
-_POLICY_FACTORS: dict[MeshPolicy, tuple[float, float, float]] = {
+_QUALITY_FACTORS: dict[MeshQuality, tuple[float, float, float]] = {
     "fast": (4.0, 6.0, 2.5),
     "balanced": (3.0, 5.0, 2.0),
     "accurate": (2.0, 3.5, 1.6),
 }
-_POLICY_SHAPE_P05 = {"fast": 0.10, "balanced": 0.20, "accurate": 0.30}
+_QUALITY_SHAPE_P05 = {"fast": 0.10, "balanced": 0.20, "accurate": 0.30}
 
 
 def _automatic_options(
     characteristic_length: float | None,
-    policy: MeshPolicy,
+    quality: MeshQuality,
 ) -> tuple[MeshingOptions, ...]:
-    surface_factor, volume_factor, quality_ratio = _POLICY_FACTORS[policy]
+    surface_factor, volume_factor, quality_ratio = _QUALITY_FACTORS[quality]
     if characteristic_length is None:
         base = MeshingOptions(mesher=MesherOptions(tetgen_quality_ratio=quality_ratio))
     else:
@@ -579,26 +579,26 @@ def _mesh_automatically(
     output: Path,
     dimension: Dimension,
     *,
-    policy: MeshPolicy,
+    quality: MeshQuality,
 ) -> MeshResult2D | MeshResult3D:
-    if policy not in _POLICY_FACTORS:
-        msg = f"Unknown mesh policy: {policy}"
+    if quality not in _QUALITY_FACTORS:
+        msg = f"Unknown mesh quality: {quality}"
         raise ValueError(msg)
     characteristic = _characteristic_length(source, dimension)
     spacing = _grid_spacing(source)
     attempts: list[MeshAttemptReport] = []
     last_error: Exception | None = None
     names = ("scale-aware", "safer-surface", "no-decimation-recovery")
-    option_attempts = _automatic_options(characteristic, policy)
+    option_attempts = _automatic_options(characteristic, quality)
     for attempt_index, (name, options) in enumerate(
         zip(names, option_attempts, strict=True)
     ):
         try:
             result = _with_quality(_mesh_once(source, output, dimension, options))
             _raise_for_quality(result.quality)
-            quality_target_met = _quality_target_met(result.quality, policy)
-            _raise_for_policy_quality(
-                policy,
+            quality_target_met = _quality_target_met(result.quality, quality)
+            _raise_for_requested_quality(
+                quality,
                 target_met=quality_target_met,
                 final=attempt_index == len(option_attempts) - 1,
             )
@@ -610,7 +610,7 @@ def _mesh_automatically(
             continue
         attempts.append(_attempt_report(name, options, success=True))
         automatic = AutomaticMeshReport(
-            policy=policy,
+            quality=quality,
             dimension=dimension,
             characteristic_length=characteristic,
             grid_spacing=spacing,
@@ -648,16 +648,16 @@ def _raise_for_quality(report: MeshQualityReport | None) -> None:
         raise InvalidGeometryError(_quality_error(report))
 
 
-def _quality_target_met(report: MeshQualityReport | None, policy: MeshPolicy) -> bool:
-    return report is None or report.shape_quality_p05 >= _POLICY_SHAPE_P05[policy]
+def _quality_target_met(report: MeshQualityReport | None, quality: MeshQuality) -> bool:
+    return report is None or report.shape_quality_p05 >= _QUALITY_SHAPE_P05[quality]
 
 
-def _raise_for_policy_quality(
-    policy: MeshPolicy, *, target_met: bool, final: bool
+def _raise_for_requested_quality(
+    quality: MeshQuality, *, target_met: bool, final: bool
 ) -> None:
     if target_met or final:
         return
-    message = f"5th-percentile shape quality is below the {policy} target"
+    message = f"5th-percentile shape quality is below the {quality} target"
     raise InvalidGeometryError(message)
 
 
@@ -777,7 +777,10 @@ def _write_automatic_report(
 
 
 def _triangle_switches(options: MesherOptions) -> str:
-    return f"-Dq{options.triangle_min_angle:g}gA"
+    # ``-p`` tells Triangle to mesh the segments, holes, and regions from the
+    # .poly file.  Without it Triangle meshes only the point set's convex hull,
+    # leaving cells with attribute 0 and ignoring material interfaces.
+    return f"-pDq{options.triangle_min_angle:g}gA"
 
 
 def _tetgen_switches(options: MesherOptions) -> str:
@@ -805,8 +808,16 @@ def _encode_material_ids(
 def _decode_material_ids(
     material_ids: Sequence[int], original_by_encoded: dict[int, int]
 ) -> tuple[int, ...]:
+    # Triangle reserves zero for the default region containing the base level
+    # set. ViennaPS orders that base material first.
+    base_material = original_by_encoded.get(1)
     try:
-        return tuple(original_by_encoded[material_id] for material_id in material_ids)
+        return tuple(
+            base_material
+            if material_id == 0 and base_material is not None
+            else original_by_encoded[material_id]
+            for material_id in material_ids
+        )
     except KeyError as error:
         msg = f"Mesher returned unknown material attribute {error.args[0]}"
         raise InvalidGeometryError(msg) from error

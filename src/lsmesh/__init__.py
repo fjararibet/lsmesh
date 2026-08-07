@@ -26,7 +26,7 @@ from lsmesher.geometry_types import Edge, Face, Point2D, Point3D, Region3D
 from lsmesher.meshing import (
     MesherOptions,
     MeshingOptions,
-    MeshPolicy,
+    MeshQuality,
     mesh,
     write,
 )
@@ -62,7 +62,7 @@ __all__ = [
     "MaterialInfo",
     "MeshAttemptReport",
     "MeshOptions",
-    "MeshPolicy",
+    "MeshQuality",
     "MeshQualityReport",
     "MeshResult",
     "MeshResult2D",

@@ -238,8 +238,8 @@ class TestVtpToPolyString:
         result = vtp_to_poly_string(points, edges, attributes=attributes)
         lines = result.split("\n")
 
-        # Check attribute count header
-        assert "0 0" in lines[0] or "2" in lines[0]
+        # Region attributes do not change the per-vertex attribute count.
+        assert lines[0] == "3 2 0 0"
 
 
 class TestToOffString:

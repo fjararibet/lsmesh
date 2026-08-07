@@ -140,7 +140,7 @@ def mesher_options_from_args(args: CliArgs) -> MesherOptions:
 
 
 def _triangle_switches(options: MesherOptions) -> str:
-    return f"-Dq{options.triangle_min_angle:g}gA"
+    return f"-pDq{options.triangle_min_angle:g}gA"
 
 
 def run_2d(args: CliArgs) -> None:

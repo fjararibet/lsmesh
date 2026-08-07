@@ -55,15 +55,15 @@ result = lsmesh.mesh(domain, "device.vtu")
 
 Automatic meshing infers the dimension and characteristic length, validates the
 geometry, checks element quality and material coverage, and performs bounded
-recovery attempts when necessary. The default policy is `balanced`:
+recovery attempts when necessary. The default quality is `balanced`:
 
 ```python
-fast = lsmesh.mesh(domain, policy="fast")
-balanced = lsmesh.mesh(domain, policy="balanced")
-accurate = lsmesh.mesh(domain, policy="accurate")
+fast = lsmesh.mesh(domain, quality="fast")
+balanced = lsmesh.mesh(domain, quality="balanced")
+accurate = lsmesh.mesh(domain, quality="accurate")
 ```
 
-Explicit options are available when direct control is needed. `policy` and
+Explicit options are available when direct control is needed. `quality` and
 `options` are mutually exclusive:
 
 ```python
@@ -116,7 +116,7 @@ result.materials        # ViennaPS material metadata
 result.material_ids     # Material IDs in level-set order
 result.validation       # Structural validation report
 result.quality          # Element and material quality report
-result.automatic        # Automatic policy and retry report
+result.automatic        # Requested quality and automatic retry report
 result.output_path      # Primary output, when written by mesh()
 result.report_paths     # Generated JSON sidecars
 result.log_path         # Triangle or TetGen process log

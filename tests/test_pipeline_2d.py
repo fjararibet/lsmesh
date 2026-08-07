@@ -2,6 +2,7 @@
 
 from lsmesher.geometry_types import Edge, Point2D
 from lsmesher.pipeline_2d import (
+    _region_seed_candidates,
     build_2d_poly_geometry,
     close_2d_layer,
     collect_2d_attributes,
@@ -17,6 +18,32 @@ def fixed_attribute_sampler(_layer, _previous, *, originally_closed):
     """Return a deterministic attribute point for pipeline tests."""
     assert isinstance(originally_closed, bool)
     return Point2D(0.5, 0.5)
+
+
+def test_region_seeds_cover_disconnected_material_components():
+    outer = Layer2D(
+        points=(
+            Point2D(-2, -1),
+            Point2D(2, -1),
+            Point2D(2, 1),
+            Point2D(-2, 1),
+        ),
+        edges=(Edge(0, 1), Edge(1, 2), Edge(2, 3), Edge(3, 0)),
+    )
+    divider = Layer2D(
+        points=(
+            Point2D(-0.5, -1),
+            Point2D(0.5, -1),
+            Point2D(0.5, 1),
+            Point2D(-0.5, 1),
+        ),
+        edges=(Edge(0, 1), Edge(1, 2), Edge(2, 3), Edge(3, 0)),
+    )
+
+    seeds = _region_seed_candidates(outer, divider, originally_closed=False)
+
+    assert len(seeds) == 2
+    assert {point.x < 0 for point in seeds} == {False, True}
 
 
 def test_compute_bottom_points_from_layers():
@@ -156,7 +183,7 @@ def test_build_2d_poly_geometry_chains_steps():
         sampler=fixed_attribute_sampler,
     )
 
-    assert result.attributes == (Point2D(0.5, 0.5),)
+    assert result.attributes
     assert len(result.points) >= 3
     assert len(result.edges) >= 3
 
@@ -171,7 +198,7 @@ def test_geometry_2d_to_poly_text_serializes_attributes():
 
     result = geometry_2d_to_poly_text(geometry)
 
-    assert result.splitlines()[0] == "3 2 1 0"
+    assert result.splitlines()[0] == "3 2 0 0"
     assert "1 0.25 0.25 1 -1" in result
 
 

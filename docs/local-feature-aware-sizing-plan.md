@@ -2,7 +2,7 @@
 
 Status: **deferred design**. This document specifies the intended implementation
 of local-feature-aware sizing so it can be picked up after the automatic
-`mesh()` policy, correctness gates, and retry ladder are established.
+`mesh()` quality presets, correctness gates, and retry ladder are established.
 
 ## Objective
 
@@ -17,11 +17,11 @@ The normal API remains automatic:
 result = mesh(domain, "device.vtu")
 ```
 
-An expert may select or tune the policy, but should not need to construct a
+An expert may select or tune the quality preset, but should not need to construct a
 sizing field manually:
 
 ```python
-result = mesh(domain, "device.vtu", policy="accurate")
+result = mesh(domain, "device.vtu", quality="accurate")
 ```
 
 The first implementation is isotropic. Anisotropic boundary-layer elements and
@@ -50,14 +50,14 @@ h_raw(x) = min(
     grid_factor * grid_delta,
     thickness(x) / elements_across_feature,
     curvature_limit(x),
-    user_or_policy_maximum,
+    user_or_quality_maximum,
 )
 
-h(x) = clamp(h_raw(x), policy_minimum, policy_maximum)
+h(x) = clamp(h_raw(x), quality_minimum, quality_maximum)
 ```
 
-A balanced policy should initially require at least three elements across a
-material thickness. The accurate policy may require four or five. These values
+A balanced quality should initially require at least three elements across a
+material thickness. The accurate quality may require four or five. These values
 must be established experimentally rather than embedded as unexplained magic
 constants.
 
@@ -161,7 +161,7 @@ class SizingField3D:
     maximum_gradation: float
 ```
 
-The automatic policy produces this type. Surface processing, TetGen input, and
+The automatic quality preset produces this type. Surface processing, TetGen input, and
 reporting consume it. This avoids coupling the estimator to `.mtr`, `.var`, or
 PyMeshLab APIs and makes it testable without external meshers.
 
@@ -278,7 +278,7 @@ A locally sized mesh is accepted only when:
 - protected seams and material junctions are unchanged;
 - thin-feature samples meet the requested elements-across-feature count within
   a documented tolerance, or are explicitly reported as input-limited;
-- and boundary and volume size gradation remain within policy limits.
+- and boundary and volume size gradation remain within quality limits.
 
 TetGen success alone is not an acceptance criterion.
 
@@ -336,14 +336,14 @@ Unit geometries should have analytic expectations:
 
 End-to-end tests should verify:
 
-- at least the policy's requested number of elements across thin layers;
+- at least the quality preset's requested number of elements across thin layers;
 - no lost materials or inverted tetrahedra;
 - clean TetGen PLC intersection checks;
 - fewer tetrahedra than an equivalent globally fine mesh;
 - and bounded geometric deviation from the undecimated interfaces.
 
 Record runtime, peak memory, surface faces, tetrahedra, quality percentiles, and
-material volumes for every reference case so policy changes are evidence-based.
+material volumes for every reference case so quality changes are evidence-based.
 
 ## Open Decisions
 

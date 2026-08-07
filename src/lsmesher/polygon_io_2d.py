@@ -113,7 +113,10 @@ def vtp_to_poly_string(
     lines = []
 
     # Section: Header with points
-    lines.append(f"{len(points)} 2 {len(attributes)} 0")
+    # Region attributes are declared in the regions section below.  The third
+    # field in this header is the number of attributes on *each vertex*; our
+    # vertex records contain only coordinates, so it must always be zero.
+    lines.append(f"{len(points)} 2 0 0")
     for i, point in enumerate(points):
         lines.append(f"{i + 1} {point.x} {point.y}")
 

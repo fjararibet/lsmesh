@@ -105,6 +105,10 @@ def test_material_encoding_is_positive_reversible_and_unifies_repeats():
     assert _decode_material_ids(encoded, original_by_encoded) == (10, 0, 0, -4)
 
 
+def test_triangle_default_region_decodes_to_base_material():
+    assert _decode_material_ids((0, 2), {1: 10, 2: 30}) == (10, 30)
+
+
 def test_quality_report_detects_missing_material():
     quality = _element_quality(
         np.asarray(
@@ -159,6 +163,7 @@ def test_automatic_mesh_retries_with_safer_surface_settings(tmp_path, monkeypatc
     assert len(calls) == 2
     assert calls[1].build.decimation.optimal_placement is False
     assert result.automatic is not None
+    assert result.automatic.quality == "balanced"
     assert result.automatic.selected_attempt == "safer-surface"
     assert [attempt.success for attempt in result.automatic.attempts] == [False, True]
 
@@ -182,12 +187,12 @@ def test_write_rejects_incompatible_format(tmp_path: Path):
         write(square_2d(), tmp_path / "square.off")
 
 
-def test_mesh_rejects_policy_with_explicit_options(tmp_path: Path):
+def test_mesh_rejects_quality_with_explicit_options(tmp_path: Path):
     with pytest.raises(ValueError, match="mutually exclusive"):
         mesh(
             triangle_3d(),
             tmp_path / "mesh.vtu",
-            policy="fast",
+            quality="fast",
             options=MeshingOptions(run_mesher=False),
         )
 
