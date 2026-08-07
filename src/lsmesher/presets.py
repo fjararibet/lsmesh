@@ -19,9 +19,7 @@ PRESET_REQUEST_ENV = "LSMESHER_PRESET_REQUEST"
 OptionsT = TypeVar("OptionsT")
 
 
-def _dataclass_options(
-    option_type: type[OptionsT], values: dict[str, Any]
-) -> OptionsT:
+def _dataclass_options(option_type: type[OptionsT], values: dict[str, Any]) -> OptionsT:
     names = {item.name for item in fields(option_type)}
     return option_type(**{key: value for key, value in values.items() if key in names})
 

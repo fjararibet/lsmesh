@@ -12,7 +12,7 @@ from pathlib import Path
 
 def _pymeshlab_available():
     try:
-        import pymeshlab  # noqa: F401
+        import pymeshlab  # noqa: F401, PLC0415
 
         return True
     except ImportError:
@@ -54,7 +54,7 @@ class Test2DExtraction:
             ]
         )
 
-        result = subprocess.run(cmd, capture_output=True, text=True)
+        result = subprocess.run(cmd, capture_output=True, text=True, check=False)
 
         assert result.returncode == 0, (
             f"Command failed with return code {result.returncode}\n"
@@ -106,7 +106,7 @@ class Test3DExtraction:
             str(output_file),
         ]
 
-        result = subprocess.run(cmd, capture_output=True, text=True)
+        result = subprocess.run(cmd, capture_output=True, text=True, check=False)
 
         assert result.returncode == 0, (
             f"Command failed with return code {result.returncode}\n"

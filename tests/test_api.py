@@ -1,5 +1,7 @@
 """Tests for the public, dependency-light conversion boundary."""
 
+import pytest
+
 from lsmesher import BuildOptions, DecimationOptions3D, build_from_files
 from lsmesher.api import (
     build_from_viennaps,
@@ -156,3 +158,8 @@ def test_seeded_sampler_is_repeatable():
     second = seeded_2d_attribute_sampler(42)(layer, None, originally_closed=True)
 
     assert first == second
+
+
+def test_build_rejects_invalid_runtime_dimension():
+    with pytest.raises(ValueError, match="dimension must be 2 or 3"):
+        build_from_files([], 4)  # type: ignore[call-overload]

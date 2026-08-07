@@ -7,6 +7,8 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from lsmesher.results import MeshAttemptReport
+
 
 class LsmesherError(RuntimeError):
     """Base class for recoverable lsmesher failures."""
@@ -14,6 +16,33 @@ class LsmesherError(RuntimeError):
 
 class InvalidGeometryError(LsmesherError):
     """The input geometry cannot be meshed safely."""
+
+
+class DependencyError(LsmesherError):
+    """An optional runtime dependency required for an operation is unavailable."""
+
+
+class UnsupportedSourceError(TypeError, LsmesherError):
+    """The value passed to :func:`mesh` is not a supported mesh source."""
+
+
+class AutomaticMeshingError(LsmesherError):
+    """All automatic meshing attempts failed.
+
+    The individual attempts are retained so applications can present useful
+    diagnostics without parsing log files or exception strings.
+    """
+
+    def __init__(
+        self,
+        attempts: tuple[MeshAttemptReport, ...],
+        last_error: Exception,
+    ) -> None:
+        super().__init__(
+            f"Automatic meshing failed after {len(attempts)} attempts: {last_error}"
+        )
+        self.attempts = attempts
+        self.last_error = last_error
 
 
 class MesherNotFoundError(LsmesherError):

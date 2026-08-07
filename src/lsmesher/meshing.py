@@ -26,10 +26,13 @@ from lsmesher.api import (
     materials_from_viennaps,
 )
 from lsmesher.errors import (
+    AutomaticMeshingError,
     InvalidGeometryError,
+    LsmesherError,
     MesherNotFoundError,
     TetGenError,
     TriangleError,
+    UnsupportedSourceError,
 )
 from lsmesher.geometry_types import Face, Region3D
 from lsmesher.pipeline_2d import geometry_2d_to_poly_text, read_2d_layers
@@ -75,7 +78,9 @@ from lsmesher.validation import ValidationReport, validate
 
 OutputFormat: TypeAlias = Literal["poly", "off", "vtp", "vtu"]
 MeshPolicy: TypeAlias = Literal["fast", "balanced", "accurate"]
-MeshInput: TypeAlias = ViennaPSDomain | Sequence[str | Path] | Geometry2D | Surface3D
+MeshInput: TypeAlias = (
+    ViennaPSDomain | str | Path | Sequence[str | Path] | Geometry2D | Surface3D
+)
 WritableMesh: TypeAlias = Geometry2D | Surface3D | TriangleMesh2D | TetrahedralMesh3D
 
 
@@ -87,8 +92,6 @@ class MesherOptions:
     tetgen_quality_ratio: float = 2.0
     tetgen_min_dihedral: float = 0.0
     tetgen_max_volume: float | None = None
-    bottom_margin: float = 0.10
-    seam_protection_rings: int = 8
 
 
 @dataclass(frozen=True)
@@ -161,77 +164,200 @@ def _unsupported(value: WritableMesh, format_name: str) -> None:
 @overload
 def mesh(
     source: Geometry2D,
-    output: str | Path,
+    output: str | Path | None = None,
     *,
     dimension: Literal[2] = 2,
     options: MeshingOptions | None = None,
-    policy: MeshPolicy = "balanced",
+    policy: MeshPolicy | None = None,
 ) -> MeshResult2D: ...
 
 
 @overload
 def mesh(
     source: Surface3D,
-    output: str | Path,
+    output: str | Path | None = None,
     *,
     dimension: Literal[3] = 3,
     options: MeshingOptions | None = None,
-    policy: MeshPolicy = "balanced",
+    policy: MeshPolicy | None = None,
 ) -> MeshResult3D: ...
 
 
 @overload
 def mesh(
-    source: ViennaPSDomain | Sequence[str | Path],
-    output: str | Path,
+    source: ViennaPSDomain | str | Path | Sequence[str | Path],
+    output: str | Path | None = None,
     *,
     dimension: Literal[2],
     options: MeshingOptions | None = None,
-    policy: MeshPolicy = "balanced",
+    policy: MeshPolicy | None = None,
 ) -> MeshResult2D: ...
 
 
 @overload
 def mesh(
-    source: ViennaPSDomain | Sequence[str | Path],
-    output: str | Path,
+    source: ViennaPSDomain | str | Path | Sequence[str | Path],
+    output: str | Path | None = None,
     *,
     dimension: Literal[3],
     options: MeshingOptions | None = None,
-    policy: MeshPolicy = "balanced",
+    policy: MeshPolicy | None = None,
 ) -> MeshResult3D: ...
 
 
 @overload
 def mesh(
-    source: ViennaPSDomain | Sequence[str | Path],
-    output: str | Path,
+    source: ViennaPSDomain | str | Path | Sequence[str | Path],
+    output: str | Path | None = None,
     *,
     dimension: None = None,
     options: MeshingOptions | None = None,
-    policy: MeshPolicy = "balanced",
+    policy: MeshPolicy | None = None,
 ) -> MeshResult2D | MeshResult3D: ...
 
 
 def mesh(
     source: MeshInput,
-    output: str | Path,
+    output: str | Path | None = None,
     *,
     dimension: Dimension | None = None,
     options: MeshingOptions | None = None,
-    policy: MeshPolicy = "balanced",
+    policy: MeshPolicy | None = None,
 ) -> MeshResult2D | MeshResult3D:
-    """Build, validate, mesh, and write a geometry with automatic safe defaults."""
-    resolved_dimension = dimension or _infer_dimension(source)
+    """Build and mesh a geometry using automatic safe defaults.
+
+    Args:
+        source: A ViennaPS domain, typed geometry, VTP path, or ordered sequence
+            of VTP paths. A single string or :class:`~pathlib.Path` is accepted.
+        output: Optional destination. ``.vtu`` writes generated elements;
+            geometry formats write the intermediate boundary for compatibility.
+            Prefer omitting this and calling ``result.write(...)``.
+        dimension: Explicitly select 2D or 3D. It is normally inferred.
+        options: Expert configuration. Supplying it selects a single attempt and
+            cannot be combined with ``policy``.
+        policy: Automatic goal: ``fast``, ``balanced`` (default), or ``accurate``.
+
+    Returns:
+        A dimensional result containing geometry, generated elements, quality,
+        validation, materials, and automatic-attempt metadata.
+
+    Raises:
+        ValueError: If arguments conflict or dimension/policy is invalid.
+        UnsupportedSourceError: If ``source`` is not a supported value.
+        LsmesherError: If conversion, validation, or meshing fails.
+    """
+    normalized_source = _normalize_source(source)
+    resolved_dimension = _resolve_dimension(normalized_source, dimension)
+    if options is not None and policy is not None:
+        msg = "policy and options are mutually exclusive; omit one of them"
+        raise ValueError(msg)
+    selected_policy = policy or "balanced"
+    if output is None:
+        with tempfile.TemporaryDirectory(prefix="lsmesher-result-") as directory:
+            temporary_output = Path(directory) / (
+                "mesh.poly"
+                if options is not None
+                and not options.run_mesher
+                and resolved_dimension == 2
+                else "mesh.off"
+                if options is not None and not options.run_mesher
+                else "mesh.vtu"
+            )
+            result = _run_mesh(
+                normalized_source,
+                temporary_output,
+                resolved_dimension,
+                options,
+                selected_policy,
+            )
+            return replace(result, output_paths=(), log_path=None)
+    return _run_mesh(
+        normalized_source,
+        Path(output),
+        resolved_dimension,
+        options,
+        selected_policy,
+    )
+
+
+def _run_mesh(
+    source: MeshInput,
+    output: Path,
+    dimension: Dimension,
+    options: MeshingOptions | None,
+    policy: MeshPolicy,
+) -> MeshResult2D | MeshResult3D:
     if options is not None:
-        result = _mesh_once(source, Path(output), resolved_dimension, options)
+        result = _mesh_once(source, output, dimension, options)
         return _with_quality(result)
     return _mesh_automatically(
         source,
-        Path(output),
-        resolved_dimension,
+        output,
+        dimension,
         policy=policy,
     )
+
+
+def _normalize_source(source: MeshInput) -> MeshInput:
+    if isinstance(source, (Geometry2D, Surface3D)):
+        return source
+    if isinstance(source, (str, Path)):
+        paths = (source,)
+        _validate_input_paths(paths)
+        return paths
+    if _is_viennaps_domain(source):
+        return source
+    if (
+        isinstance(source, Sequence)
+        and not isinstance(source, (bytes, bytearray))
+        and all(isinstance(item, (str, Path)) for item in source)
+    ):
+        paths = cast("tuple[str | Path, ...]", tuple(source))
+        _validate_input_paths(paths)
+        return paths
+    msg = (
+        "Unsupported source: expected a ViennaPS domain, Geometry2D, Surface3D, "
+        "or one or more VTP paths"
+    )
+    raise UnsupportedSourceError(msg)
+
+
+def _validate_input_paths(paths: Sequence[str | Path]) -> None:
+    for value in paths:
+        path = Path(value)
+        if not path.exists():
+            msg = f"Input interface does not exist: {path}"
+            raise FileNotFoundError(msg)
+        if not path.is_file():
+            msg = f"Input interface is not a file: {path}"
+            raise ValueError(msg)
+        if path.suffix.lower() != ".vtp":
+            msg = f"Input interfaces must be VTP files, got: {path}"
+            raise ValueError(msg)
+
+
+def _is_viennaps_domain(source: object) -> bool:
+    return all(
+        callable(getattr(source, method, None))
+        for method in ("getLevelSets", "getMaterialMap")
+    )
+
+
+def _resolve_dimension(source: MeshInput, dimension: int | None) -> Dimension:
+    if dimension is not None:
+        if dimension not in (2, 3):
+            msg = f"dimension must be 2 or 3, got {dimension!r}"
+            raise ValueError(msg)
+        resolved = cast("Dimension", dimension)
+    else:
+        resolved = _infer_dimension(source)
+    if isinstance(source, Geometry2D) and resolved != 2:
+        msg = "Geometry2D cannot be meshed with dimension=3"
+        raise ValueError(msg)
+    if isinstance(source, Surface3D) and resolved != 3:
+        msg = "Surface3D cannot be meshed with dimension=2"
+        raise ValueError(msg)
+    return resolved
 
 
 def _mesh_once(
@@ -242,25 +368,28 @@ def _mesh_once(
 ) -> MeshResult2D | MeshResult3D:
     materials = ()
     decimation_report = None
-    if isinstance(source, (Geometry2D, Surface3D)):
-        geometry = source
-    elif hasattr(source, "getLevelSets"):
-        domain = cast("ViennaPSDomain", source)
-        if dimension == 2:
-            geometry = build_from_viennaps(domain, 2, options=config.build)
+    try:
+        if isinstance(source, (Geometry2D, Surface3D)):
+            geometry = source
+        elif _is_viennaps_domain(source):
+            domain = cast("ViennaPSDomain", source)
+            if dimension == 2:
+                geometry = build_from_viennaps(domain, 2, options=config.build)
+            else:
+                geometry, decimation_report = build_3d_from_viennaps_with_report(
+                    domain, options=config.build
+                )
+            materials = materials_from_viennaps(domain)
         else:
-            geometry, decimation_report = build_3d_from_viennaps_with_report(
-                domain, options=config.build
-            )
-        materials = materials_from_viennaps(domain)
-    else:
-        files = cast("Sequence[str | Path]", source)
-        if dimension == 2:
-            geometry = build_from_files(files, 2, options=config.build)
-        else:
-            geometry, decimation_report = build_3d_from_files_with_report(
-                files, options=config.build
-            )
+            files = cast("Sequence[str | Path]", source)
+            if dimension == 2:
+                geometry = build_from_files(files, 2, options=config.build)
+            else:
+                geometry, decimation_report = build_3d_from_files_with_report(
+                    files, options=config.build
+                )
+    except ValueError as error:
+        raise InvalidGeometryError(str(error)) from error
 
     report = validate(geometry)
     if config.validate:
@@ -282,7 +411,7 @@ def _infer_dimension(source: MeshInput) -> Dimension:  # noqa: C901, PLR0911
         return 2
     if isinstance(source, Surface3D):
         return 3
-    if hasattr(source, "getLevelSets"):
+    if _is_viennaps_domain(source):
         module = type(source).__module__.lower()
         if ".d2" in module:
             return 2
@@ -355,7 +484,7 @@ def _characteristic_length(source: MeshInput, dimension: Dimension) -> float | N
     geometry: Geometry2D | Surface3D
     if isinstance(source, (Geometry2D, Surface3D)):
         geometry = source
-    elif hasattr(source, "getLevelSets"):
+    elif _is_viennaps_domain(source):
         return None
     else:
         files = cast("Sequence[str | Path]", source)
@@ -383,9 +512,7 @@ def _automatic_options(
 ) -> tuple[MeshingOptions, ...]:
     surface_factor, volume_factor, quality_ratio = _POLICY_FACTORS[policy]
     if characteristic_length is None:
-        base = MeshingOptions(
-            mesher=MesherOptions(tetgen_quality_ratio=quality_ratio)
-        )
+        base = MeshingOptions(mesher=MesherOptions(tetgen_quality_ratio=quality_ratio))
     else:
         surface_edge = characteristic_length * surface_factor
         volume_edge = characteristic_length * volume_factor
@@ -407,9 +534,7 @@ def _automatic_options(
             else None
         ),
         target_total_faces=(
-            None
-            if base.build.decimation.target_edge_length is not None
-            else 2 * 5_600
+            None if base.build.decimation.target_edge_length is not None else 2 * 5_600
         ),
         optimal_placement=False,
     )
@@ -420,7 +545,6 @@ def _automatic_options(
             decimation=safer_decimation,
             seam_protection_rings=base.build.seam_protection_rings + 4,
         ),
-        mesher=replace(base.mesher, seam_protection_rings=12),
     )
     recovery = replace(
         safer,
@@ -478,7 +602,7 @@ def _mesh_automatically(
                 target_met=quality_target_met,
                 final=attempt_index == len(option_attempts) - 1,
             )
-        except (InvalidGeometryError, TetGenError, TriangleError, ValueError) as error:
+        except LsmesherError as error:
             attempts.append(
                 _attempt_report(name, options, success=False, error=str(error))
             )
@@ -501,7 +625,7 @@ def _mesh_automatically(
             output_paths=(*result.output_paths, report_path),
         )
     if last_error is not None:
-        raise last_error
+        raise AutomaticMeshingError(tuple(attempts), last_error) from last_error
     msg = "Automatic meshing exhausted its attempts"
     raise InvalidGeometryError(msg)
 
@@ -511,7 +635,7 @@ def _quality_error(report: MeshQualityReport) -> str:
     if report.element_count == 0:
         problems.append("mesher produced no elements")
     if report.minimum_measure <= 0:
-        problems.append("mesh contains zero-measure elements")
+        problems.append("mesh contains zero-measure or inverted elements")
     if report.missing_material_ids:
         problems.append(f"missing materials {report.missing_material_ids}")
     if report.unknown_material_ids:
@@ -524,9 +648,7 @@ def _raise_for_quality(report: MeshQualityReport | None) -> None:
         raise InvalidGeometryError(_quality_error(report))
 
 
-def _quality_target_met(
-    report: MeshQualityReport | None, policy: MeshPolicy
-) -> bool:
+def _quality_target_met(report: MeshQualityReport | None, policy: MeshPolicy) -> bool:
     return report is None or report.shape_quality_p05 >= _POLICY_SHAPE_P05[policy]
 
 
@@ -536,7 +658,7 @@ def _raise_for_policy_quality(
     if target_met or final:
         return
     message = f"5th-percentile shape quality is below the {policy} target"
-    raise ValueError(message)
+    raise InvalidGeometryError(message)
 
 
 def _expected_material_ids(materials: tuple[MaterialInfo, ...]) -> set[int]:
@@ -558,14 +680,17 @@ def _element_quality(
         measures = doubled_area / 2.0
         edge_pairs = ((0, 1), (1, 2), (2, 0))
     else:
-        measures = np.einsum(
-            "ij,ij->i",
-            vertices[:, 1] - vertices[:, 0],
-            np.cross(
-                vertices[:, 2] - vertices[:, 0],
-                vertices[:, 3] - vertices[:, 0],
-            ),
-        ) / 6.0
+        measures = (
+            np.einsum(
+                "ij,ij->i",
+                vertices[:, 1] - vertices[:, 0],
+                np.cross(
+                    vertices[:, 2] - vertices[:, 0],
+                    vertices[:, 3] - vertices[:, 0],
+                ),
+            )
+            / 6.0
+        )
         edge_pairs = ((0, 1), (0, 2), (0, 3), (1, 2), (1, 3), (2, 3))
     edge_lengths = np.stack(
         [
@@ -624,10 +749,7 @@ def _with_quality(
     if result.mesh is None:
         return result
     points = np.asarray(
-        [
-            [point.x, point.y, getattr(point, "z", 0.0)]
-            for point in result.mesh.points
-        ],
+        [[point.x, point.y, getattr(point, "z", 0.0)] for point in result.mesh.points],
         dtype=float,
     )
     cells_source = (
@@ -646,7 +768,10 @@ def _write_automatic_report(
     quality: MeshQualityReport | None,
 ) -> Path:
     path = output.with_name(f"{output.stem}.automatic.json")
-    content = {"automatic": asdict(report), "quality": asdict(quality) if quality else None}
+    content = {
+        "automatic": asdict(report),
+        "quality": asdict(quality) if quality else None,
+    }
     path.write_text(json.dumps(content, indent=2) + "\n", encoding="utf-8")
     return path
 
@@ -702,6 +827,13 @@ def _mesh_2d(
             msg = f"{format_name.upper()} output requires Triangle; remove --no-mesh"
             raise InvalidGeometryError(msg) from error
         return MeshResult2D(geometry, None, materials, (output,), validation=report)
+
+    if format_name == "poly":
+        msg = (
+            "POLY is a boundary-geometry format, not a generated mesh format; "
+            "use run_mesher=False or write(result.geometry, output)"
+        )
+        raise ValueError(msg)
 
     with tempfile.TemporaryDirectory(prefix="lsmesher-") as directory:
         poly_path = Path(directory) / "mesh.poly"
@@ -765,6 +897,13 @@ def _mesh_3d(  # noqa: PLR0913
             decimation=decimation_report,
         )
 
+    if format_name != "vtu":
+        msg = (
+            f"{format_name.upper()} is a surface-geometry format, not a volume "
+            "mesh format; use a .vtu output or write(result.geometry, output)"
+        )
+        raise ValueError(msg)
+
     executable = shutil.which("tetgen")
     if executable is None:
         mesher_name = "tetgen"
@@ -801,13 +940,11 @@ def _mesh_3d(  # noqa: PLR0913
         points, tetrahedra, encoded_attributes = read_tetgen_mesh(
             poly_path.with_suffix("")
         )
-        attributes = _decode_material_ids(
-            encoded_attributes, original_by_encoded
-        )
+        attributes = _decode_material_ids(encoded_attributes, original_by_encoded)
         tetrahedral_mesh = TetrahedralMesh3D(
             tuple(points), tuple(tetrahedra), tuple(attributes)
         )
-        write(tetrahedral_mesh if format_name == "vtu" else geometry, output)
+        write(tetrahedral_mesh, output)
     return MeshResult3D(
         geometry,
         tetrahedral_mesh,

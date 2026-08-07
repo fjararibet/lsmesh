@@ -6,6 +6,7 @@ Tests the full workflow from VTP files to 3D POLY output.
 import pytest
 
 from lsmesher import geometry_3d as geometry
+from lsmesher.geometry_types import Face, Point3D, Region3D
 
 # Import from the new lsmesher package
 from lsmesher.polygon_io_3d import (
@@ -14,7 +15,6 @@ from lsmesher.polygon_io_3d import (
     to_off_string,
     vtp_to_poly_string,
 )
-from lsmesher.geometry_types import Face, Point3D, Region3D
 
 
 class TestMainWorkflow3D:
@@ -154,8 +154,8 @@ class TestMeshDecimationWorkflow:
             pytest.skip("No 3D VTP files available")
 
         try:
-            import numpy as np
-            import pymeshlab as ml
+            import numpy as np  # noqa: PLC0415
+            import pymeshlab as ml  # noqa: PLC0415
 
             points = read_vtp_points(vtp_3d_files[0])
             faces = read_vtp_faces(vtp_3d_files[0])
@@ -180,8 +180,8 @@ class TestMeshDecimationWorkflow:
             pytest.skip("No 3D VTP files available")
 
         try:
-            import numpy as np
-            import pymeshlab as ml
+            import numpy as np  # noqa: PLC0415
+            import pymeshlab as ml  # noqa: PLC0415
 
             points = read_vtp_points(vtp_3d_files[0])
             faces = read_vtp_faces(vtp_3d_files[0])

@@ -3,6 +3,7 @@
 import argparse
 import os
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal, Protocol
 
@@ -12,7 +13,9 @@ from lsmesher._bin import SHOWME, TRIANGLE
 from lsmesher.api import BuildOptions
 from lsmesher.errors import LsmesherError
 from lsmesher.meshing import (
-    MesherOptions,
+    MesherOptions as SdkMesherOptions,
+)
+from lsmesher.meshing import (
     MeshingOptions,
 )
 from lsmesher.meshing import (
@@ -88,6 +91,27 @@ class CliArgs(Protocol):
     verbose: bool
 
 
+@dataclass(frozen=True)
+class MesherOptions:
+    """Combined CLI controls split across SDK build and mesher options."""
+
+    triangle_min_angle: float = 20.0
+    tetgen_quality_ratio: float = 2.0
+    tetgen_min_dihedral: float = 0.0
+    tetgen_max_volume: float | None = None
+    bottom_margin: float = 0.10
+    seam_protection_rings: int = 8
+
+
+def _sdk_mesher_options(options: MesherOptions) -> SdkMesherOptions:
+    return SdkMesherOptions(
+        triangle_min_angle=options.triangle_min_angle,
+        tetgen_quality_ratio=options.tetgen_quality_ratio,
+        tetgen_min_dihedral=options.tetgen_min_dihedral,
+        tetgen_max_volume=options.tetgen_max_volume,
+    )
+
+
 def mesher_options_from_args(args: CliArgs) -> MesherOptions:
     """Build mesher options from parsed CLI or viewer arguments."""
     explicit = getattr(args, "mesher", None)
@@ -134,7 +158,7 @@ def run_2d(args: CliArgs) -> None:
                 detect_holes=not args.no_holes,
                 random_seed=getattr(args, "random_seed", None),
             ),
-            mesher=mesher,
+            mesher=_sdk_mesher_options(mesher),
             run_mesher=not args.no_mesh,
             validate=not getattr(args, "no_validate", False),
         ),
@@ -206,7 +230,7 @@ def run_3d(args: CliArgs) -> None:
                 bottom_margin=mesher.bottom_margin,
                 seam_protection_rings=mesher.seam_protection_rings,
             ),
-            mesher=mesher,
+            mesher=_sdk_mesher_options(mesher),
             run_mesher=not args.no_mesh,
             validate=not getattr(args, "no_validate", False),
         ),

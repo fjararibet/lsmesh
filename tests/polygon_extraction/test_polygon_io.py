@@ -4,6 +4,8 @@ Regression tests for polygon_io_2d module
 
 import pytest
 
+from lsmesher.geometry_types import Edge, Face, Point2D
+
 # Import from the new lsmesher package
 from lsmesher.polygon_io_2d import (
     read_poly,
@@ -13,7 +15,6 @@ from lsmesher.polygon_io_2d import (
     vtp_to_poly_string,
     write_poly,
 )
-from lsmesher.geometry_types import Edge, Face, Point2D
 
 
 def p(x: float, y: float) -> Point2D:
@@ -225,7 +226,7 @@ class TestVtpToPolyString:
         lines = result.split("\n")
 
         # Find holes section (should have 1 hole)
-        hole_line_idx = [i for i, line in enumerate(lines) if line == "1"][0]
+        hole_line_idx = next(i for i, line in enumerate(lines) if line == "1")
         assert lines[hole_line_idx + 1] == "1 1.0 1.0"
 
     def test_with_attributes(self):

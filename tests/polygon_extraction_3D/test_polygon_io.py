@@ -4,6 +4,8 @@ Regression tests for polygon_io_3d module
 
 import pytest
 
+from lsmesher.geometry_types import Edge, Face, Point3D, Region3D
+
 # Import from the new lsmesher package
 from lsmesher.polygon_io_3d import (
     load_off,
@@ -15,7 +17,6 @@ from lsmesher.polygon_io_3d import (
     vtp_to_poly_string,
     write_poly,
 )
-from lsmesher.geometry_types import Edge, Face, Point3D, Region3D
 
 
 def p(x: float, y: float, z: float) -> Point3D:
@@ -209,7 +210,7 @@ OFF
         off_file.write_text(off_content)
 
         # Function requires OFF header, will raise ValueError
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="invalid literal"):
             load_off(str(off_file))
 
 

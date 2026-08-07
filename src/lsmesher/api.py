@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Literal, Protocol, TypeAlias, cast, overload
 
+from lsmesher.errors import DependencyError
 from lsmesher.geometry_types import Edge, Face, Point2D, Point3D
 from lsmesher.pipeline_2d import (
     AttributeSampler2D,
@@ -109,7 +110,7 @@ def _viennals_meshes(
         import viennals as vls  # noqa: PLC0415
     except ImportError as error:  # pragma: no cover
         msg = "ViennaLS is required to mesh a ViennaPS domain"
-        raise RuntimeError(msg) from error
+        raise DependencyError(msg) from error
 
     meshes: list[ViennaLSMesh] = []
     for level_set in domain.getLevelSets():
@@ -175,6 +176,7 @@ def build_from_files(
     options: BuildOptions | None = None,
 ) -> BuiltGeometry:
     """Build a closed geometry from ordered ViennaPS interface VTP files."""
+    _validate_dimension(dimension)
     config = options or BuildOptions()
     if dimension == 2:
         return build_2d_poly_geometry(
@@ -216,6 +218,7 @@ def build_from_viennaps(
     options: BuildOptions | None = None,
 ) -> BuiltGeometry:
     """Build a closed geometry directly from a live ``viennaps.Domain``."""
+    _validate_dimension(dimension)
     config = options or BuildOptions()
     meshes = _viennals_meshes(domain, dimension)
     material_ids = _material_ids_from_viennaps(domain)
@@ -262,3 +265,9 @@ def build_3d_from_viennaps_with_report(
         seam_protection_rings=config.seam_protection_rings,
         material_ids=_material_ids_from_viennaps(domain),
     )
+
+
+def _validate_dimension(dimension: object) -> None:
+    if dimension not in (2, 3):
+        msg = f"dimension must be 2 or 3, got {dimension!r}"
+        raise ValueError(msg)

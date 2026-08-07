@@ -60,6 +60,4 @@ def test_run_preset_uses_request_options_and_writes_manifest(
     assert captured["options"].mesher.tetgen_quality_ratio == 1.4
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     assert manifest["output"] == str(output_path)
-    assert manifest["materials"] == [
-        {"region": 1, "material_id": 10, "name": "Si"}
-    ]
+    assert manifest["materials"] == [{"region": 1, "material_id": 10, "name": "Si"}]

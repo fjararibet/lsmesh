@@ -1,64 +1,30 @@
 # lsmesh
 
-The `lsmesh` distribution provides the `lsmesher` Python package. It converts
-2D and 3D ViennaLS/ViennaPS interface files into polygonal and volume meshes and
-includes a command-line interface and a Streamlit/PyVista viewer with runnable
-example presets.
+`lsmesh` converts ViennaLS and ViennaPS interfaces into validated,
+material-resolved 2D and 3D meshes. It accepts live ViennaPS domains or exported
+VTP interfaces, runs Triangle or TetGen, and returns typed Python results with
+validation, quality, material, and retry information.
 
-## Run with Nix
-
-Launch the viewer from the repository root:
+## Installation
 
 ```bash
-nix run .
+pip install lsmesh
 ```
 
-Then open <http://localhost:8501>.
+Triangle is bundled with the package. Generating 3D tetrahedral meshes requires
+the `tetgen` executable to be available on `PATH`.
 
-Run the CLI through the flake:
+## Python API
 
-```bash
-nix run .#cli -- --help
-nix run .#cli -- mesh interface_0.vtp -o mesh.vtp
-```
-
-The flake also provides a development shell with Python build and native mesh
-dependencies:
-
-```bash
-nix develop
-uv sync --frozen
-uv run pytest
-```
-
-## Direct commands
-
-Inside `nix develop`, the project entry points are:
-
-```bash
-uv run lsmesher --help
-uv run lsmesher-viewer
-```
-
-For a library-only installation, viewer dependencies are optional:
-
-```bash
-uv add lsmesh
-uv add "lsmesh[viewer]"  # only when the Streamlit viewer is needed
-```
-
-## Python API and ViennaPS
-
-`mesh()` accepts a live ViennaPS domain, extracts its ordered level sets in
-memory, validates the generated geometry, runs Triangle or TetGen, and writes
-the requested result:
+Create a mesh directly from a live ViennaPS domain:
 
 ```python
 import viennaps as vps
 
-from lsmesher import mesh
+import lsmesh
 
 vps.setDimension(3)
+
 domain = vps.Domain()
 vps.MakeTrench(
     domain,
@@ -69,52 +35,174 @@ vps.MakeTrench(
     trenchDepth=5.0,
 ).apply()
 
-# Apply ViennaPS processes here, then create a material-resolved volume mesh.
-result = mesh(
-    domain,
-    "device.vtu",
-)
+# Apply additional ViennaPS processes here.
 
-print(result.mesh)
+result = lsmesh.mesh(domain)
+result.write("device.vtu")
+
+print(result.quality.summary())
 print(result.materials)
-print(result.automatic)
-print(result.quality)
-print(result.validation.issues if result.validation else ())
-print(result.log_path)
+print(result.warnings)
 ```
 
-The SDK infers the dimension and uses the ViennaPS grid spacing to choose
-surface and volume resolution. It validates material coverage and element
-quality and performs bounded safer retries when necessary. Use `policy="fast"`
-or `policy="accurate"` to express a different goal; explicit `MeshingOptions`
-remain available as the expert override. See
-[automatic meshing](docs/automatic-meshing.md) for the policy and recovery
-contract.
+An output path can also be passed directly:
 
-For live domains, Triangle/TetGen and the resulting VTU use ViennaPS material
-IDs directly, so
-disconnected or repeated layers of the same material share one ID.
-`result.materials` retains the corresponding level-set order and names.
+```python
+result = lsmesh.mesh(domain, "device.vtu")
+```
 
-Lower-level workflows can use `build_from_viennaps()`, `build_from_files()`,
-`validate()`, and `write()` independently. Material-region sampling can be made
-reproducible with `BuildOptions(random_seed=42)`. Mesher failures raise
-`TriangleError` or `TetGenError` and retain the command, captured output, return
-code, and log path.
+### Automatic policies
 
-For exported VTP interfaces, pass the paths directly to `mesh()` or
-`build_from_files()`, ordered from the lowest/innermost level set to the
-topmost one.
+Automatic meshing infers the dimension and characteristic length, validates the
+geometry, checks element quality and material coverage, and performs bounded
+recovery attempts when necessary. The default policy is `balanced`:
 
-## Viewer presets
+```python
+fast = lsmesh.mesh(domain, policy="fast")
+balanced = lsmesh.mesh(domain, policy="balanced")
+accurate = lsmesh.mesh(domain, policy="accurate")
+```
 
-The viewer discovers examples under `viewer_presets/`. Set
-`LSMESHER_PRESETS_DIR` to use another preset directory. It can also load local
-or uploaded `.vtp`, `.vtu`, `.vtk`, and `.off` files.
+Explicit options are available when direct control is needed. `policy` and
+`options` are mutually exclusive:
 
-Presets are ordinary ViennaPS scripts that finish with
-`run_preset(domain, dimension=...)`. The live domain is meshed through the SDK
-in an isolated subprocess, preserving ViennaPS material identities without
-exporting intermediate interfaces. See
-[SDK viewer presets](docs/sdk-viewer-presets.md) for the three-file preset
-layout and a minimal example.
+```python
+options = lsmesh.MeshOptions(
+    build=lsmesh.BuildOptions(
+        epsilon=1e-6,
+        random_seed=42,
+        decimation=lsmesh.DecimationOptions3D(
+            target_edge_length=0.5,
+        ),
+    ),
+    mesher=lsmesh.MesherOptions(
+        tetgen_quality_ratio=1.5,
+        tetgen_max_volume=0.25,
+    ),
+)
+
+result = lsmesh.mesh(domain, options=options)
+```
+
+### Exported VTP interfaces
+
+A single interface path can be passed directly:
+
+```python
+result = lsmesh.mesh("interface.vtp", dimension=3)
+result.write("mesh.vtu")
+```
+
+For multiple interfaces, order paths from the lowest or innermost level set to
+the highest or outermost:
+
+```python
+result = lsmesh.mesh(
+    ["substrate.vtp", "oxide.vtp", "mask.vtp"],
+    dimension=3,
+)
+result.write("mesh.vtu")
+```
+
+### Results
+
+`mesh()` returns `MeshResult2D` or `MeshResult3D`. Commonly used fields and
+operations include:
+
+```python
+result.mesh             # Triangle or TetGen mesh data
+result.geometry         # Constructed boundary geometry
+result.materials        # ViennaPS material metadata
+result.material_ids     # Material IDs in level-set order
+result.validation       # Structural validation report
+result.quality          # Element and material quality report
+result.automatic        # Automatic policy and retry report
+result.output_path      # Primary output, when written by mesh()
+result.report_paths     # Generated JSON sidecars
+result.log_path         # Triangle or TetGen process log
+result.warnings         # Combined validation and automatic warnings
+
+mesh_data = result.require_mesh()
+result.write("another-output.vtu")
+```
+
+### Errors
+
+All recoverable library failures derive from `LsmesherError`:
+
+```python
+try:
+    result = lsmesh.mesh(domain)
+except lsmesh.AutomaticMeshingError as error:
+    for attempt in error.attempts:
+        print(attempt.name, attempt.error)
+except lsmesh.MesherNotFoundError as error:
+    print(error.mesher)
+except lsmesh.LsmesherError as error:
+    print(error)
+```
+
+`TriangleError` and `TetGenError` retain the executed command, return code,
+captured output, and log path.
+
+### Lower-level operations
+
+Important types and functions are available directly from `lsmesh`:
+
+```python
+geometry = lsmesh.build_from_viennaps(domain, dimension=3)
+report = lsmesh.validate(geometry)
+lsmesh.write(geometry, "surface.vtp")
+```
+
+Focused modules are also provided for discoverability:
+
+```python
+from lsmesh.build import BuildOptions, build_from_files
+from lsmesh.errors import TetGenError
+from lsmesh.geometry import Surface3D
+from lsmesh.options import MeshOptions
+```
+
+See [`examples/`](examples/) for complete ViennaPS scripts using lsmesh.
+
+## Command-line interface
+
+The package installs the `lsmesher` command:
+
+```bash
+lsmesher --help
+lsmesher mesh --help
+```
+
+Mesh one or more exported VTP interfaces:
+
+```bash
+lsmesher mesh interface.vtp --out mesh.vtu
+lsmesher mesh substrate.vtp oxide.vtp mask.vtp --out mesh.vtu
+```
+
+Input dimension is detected from the VTP cell type: lines are treated as 2D
+interfaces and polygons as 3D surfaces.
+
+Useful options include:
+
+```text
+--format {poly,off,vtp,vtu}       Output format
+--no-mesh                         Build boundary geometry without Triangle/TetGen
+--no-validate                     Skip structural validation
+--random-seed INTEGER             Reproducible 2D region sampling
+--triangle-min-angle DEGREES      Triangle minimum element angle
+--tetgen-quality-ratio RATIO      TetGen radius-edge quality bound
+--tetgen-min-dihedral DEGREES     TetGen minimum dihedral angle
+--tetgen-max-volume VOLUME        Maximum tetrahedron volume
+--no-decimate                     Disable 3D surface decimation
+--decimate-target-edge-length L   Target 3D surface edge length
+--decimate-target-total-faces N   Global 3D surface face budget
+```
+
+For the complete option reference:
+
+```bash
+lsmesher mesh --help
+```

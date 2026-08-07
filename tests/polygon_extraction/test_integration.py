@@ -6,6 +6,7 @@ Tests the full workflow from VTP files to POLY output.
 import pytest
 
 from lsmesher import geometry_2d as geometry
+from lsmesher.geometry_types import Edge, Face, Point2D
 
 # Import from the new lsmesher package
 from lsmesher.polygon_io_2d import (
@@ -14,7 +15,6 @@ from lsmesher.polygon_io_2d import (
     to_off_string,
     vtp_to_poly_string,
 )
-from lsmesher.geometry_types import Edge, Face, Point2D
 
 
 class TestMainWorkflow:
@@ -87,10 +87,6 @@ class TestMainWorkflow:
 
         merged_points: list[Point2D] = []
         merged_edges: list[Edge] = []
-        leftmost = None
-        rightmost = None
-        prev_points: list[Point2D] = []
-        prev_edges: list[Edge] = []
         attributes: list[Point2D] = []
 
         for vtp_file in vtp_2d_files[:2]:  # Test with first 2 files
@@ -127,8 +123,6 @@ class TestMainWorkflow:
                     points2=points,
                     edges2=edges,
                 )
-
-            prev_points, prev_edges = points, edges
 
         # Verify merged result
         assert len(merged_points) > 0

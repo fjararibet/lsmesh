@@ -5,8 +5,13 @@ mesh, and performs bounded recovery without requiring Triangle, TetGen, or
 decimation parameters:
 
 ```python
-result = mesh(domain, "device.vtu")
+result = mesh(domain)
+result.write("device.vtu")
 ```
+
+The output argument remains available as a convenience: `mesh(domain,
+"device.vtu")`. Omitting it avoids persistent filesystem side effects and
+leaves `result.output_path` as `None`.
 
 For typed `Geometry2D` and `Surface3D` inputs, and for `viennaps.d2.Domain` and
 `viennaps.d3.Domain`, the dimension is inferred. File lists are inferred from
@@ -62,15 +67,18 @@ coverage, element correctness, or the policy's soft quality target rejects it.
 The final attempt may be accepted below the soft shape-quality target, but never
 when a hard correctness check fails.
 
-Explicit `MeshingOptions` remain an expert escape hatch and run exactly once:
+Explicit `MeshOptions` remain an expert escape hatch and run exactly once:
 
 ```python
 result = mesh(
     domain,
     "device.vtu",
-    options=MeshingOptions(...),
+    options=MeshOptions(...),
 )
 ```
+
+`policy` and `options` are mutually exclusive. Passing both raises immediately
+instead of silently ignoring the policy.
 
 ## Correctness Checks
 
@@ -103,7 +111,9 @@ print(result.automatic.quality_target_met)
 print(result.quality.shape_quality_p05)
 ```
 
-The same information is written to `<output-stem>.automatic.json` and included
-in `result.output_paths`. Failed attempts record their name, sizing values,
+When an output path is supplied, the same information is written to
+`<output-stem>.automatic.json` and included in `result.report_paths`. Failed
+attempts record their name, sizing values,
 decimation state, and error. The viewer displays a compact summary when this
-sidecar exists.
+sidecar exists. If every attempt fails, `AutomaticMeshingError.attempts`
+retains the complete attempt history.

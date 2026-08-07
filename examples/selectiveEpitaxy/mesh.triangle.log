@@ -1,0 +1,34 @@
+Command: /home/fjara/lsmesh/src/lsmesher/bin/triangle -Dq20gA /tmp/nix-shell.IIaOeQ/lsmesher-ejdan46f/mesh.poly
+
+Opening /tmp/nix-shell.IIaOeQ/lsmesher-ejdan46f/mesh.poly.
+Constructing Delaunay triangulation by divide-and-conquer method.
+Delaunay milliseconds:  0
+Recovering segments in Delaunay triangulation.
+Segment milliseconds:  0
+Removing unwanted triangles.
+Spreading regional attributes.
+Hole milliseconds:  0
+Adding Steiner points to enforce quality.
+Quality milliseconds:  0
+
+Writing /tmp/nix-shell.IIaOeQ/lsmesher-ejdan46f/mesh.1.node.
+Writing /tmp/nix-shell.IIaOeQ/lsmesher-ejdan46f/mesh.1.ele.
+Writing /tmp/nix-shell.IIaOeQ/lsmesher-ejdan46f/mesh.1.poly.
+Writing /tmp/nix-shell.IIaOeQ/lsmesher-ejdan46f/mesh.1.off.
+
+Output milliseconds:  0
+Total running milliseconds:  0
+
+Statistics:
+
+  Input vertices: 49
+  Input segments: 50
+  Input holes: 0
+
+  Mesh vertices: 132
+  Mesh triangles: 149
+  Mesh edges: 278
+  Mesh exterior boundary edges: 109
+  Mesh interior boundary edges: 14
+  Mesh subsegments (constrained edges): 123
+
