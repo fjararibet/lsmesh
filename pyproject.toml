@@ -56,6 +56,7 @@ include = [
 [dependency-groups]
 dev = [
     "hatchling>=1.28.0",
+    "mkdocs-material>=9.6.0",
     "plotly>=6.8.0",
     "pyvista>=0.48.4",
     "pytest>=9.0.2",

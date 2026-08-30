@@ -26,3 +26,6 @@ viewer_outputs/
 
 # Nix build output
 result
+
+# MkDocs build output
+site/

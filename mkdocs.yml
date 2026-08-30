@@ -1,0 +1,23 @@
+site_name: lsmesh
+site_description: Convert ViennaLS/ViennaPS interfaces into simulation-ready meshes
+repo_url: https://github.com/fjararibet/lsmesh
+edit_uri: tree/main/docs
+
+theme:
+  name: material
+
+docs_dir: docs
+
+nav:
+  - Overview: overview.md
+  - Automatic mesh quality: quality.md
+  - Lower-level options: options.md
+
+exclude_docs: |
+  /3d-*.md
+  /automatic-meshing.md
+  /local-feature-aware-sizing-plan.md
+  /material-identities.md
+  /publishing.md
+  /sdk-viewer-presets.md
+  /SUMMARY.md
