@@ -193,6 +193,21 @@ class TestMergePolygons:
         assert len(merged_points) == len(points1)
         assert len(merged_edges) == len(edges1)
 
+    def test_merge_discards_edge_collapsed_by_tolerance(self):
+        """Endpoints merged into one junction do not create a zero-length edge."""
+        points1 = [p(0.0, 0.0)]
+        points2 = [p(0.0, 0.0), p(0.5e-6, 0.0)]
+
+        merged_points, merged_edges = merge_polygons(
+            points1,
+            [],
+            points2,
+            [e(0, 1)],
+        )
+
+        assert merged_points == points1
+        assert merged_edges == []
+
 
 class TestRemoveCoincident:
     """Tests for remove_coincident function."""

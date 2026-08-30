@@ -40,12 +40,14 @@ def remove_collinear(
             adjacency[i].append(j)
             adjacency[j].append(i)
         for i, j in list(candidate_edges):
-            ki = [p for p in adjacency[i] if p != j]
-            ki = ki[0] if ki else None
-            kj = [p for p in adjacency[j] if p != i]
-            kj = kj[0] if kj else None
+            # Only collapse vertices in the interior of a simple polyline.
+            # Merged material interfaces contain degree-three junctions; picking
+            # an arbitrary neighbour there deletes one branch and opens the PSLG.
+            ki = next((p for p in adjacency[i] if p != j), None)
+            kj = next((p for p in adjacency[j] if p != i), None)
             if (
-                ki is not None
+                len(adjacency[i]) == 2
+                and ki is not None
                 and triangle_area(points[i], points[j], points[ki]) <= epsilon
             ):
                 candidate_edges.discard(tuple(sorted((ki, i))))
@@ -54,7 +56,8 @@ def remove_collinear(
                 done = False
                 break
             if (
-                kj is not None
+                len(adjacency[j]) == 2
+                and kj is not None
                 and triangle_area(points[i], points[j], points[kj]) <= epsilon
             ):
                 candidate_edges.discard(tuple(sorted((i, j))))
@@ -148,6 +151,11 @@ def merge_polygons(
 
     for edge in edges2:
         ni, nj = index_map[edge.start], index_map[edge.end]
+        # An input edge can collapse when its endpoints both match the same
+        # existing junction within ``epsilon``. It carries no topology after
+        # merging and must not become a zero-length PSLG segment.
+        if ni == nj:
+            continue
         merged_edges.add((min(ni, nj), max(ni, nj)))
 
     return merged_points, [Edge(i, j) for i, j in merged_edges]

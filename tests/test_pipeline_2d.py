@@ -12,6 +12,7 @@ from lsmesher.pipeline_2d import (
     simplify_2d_geometry,
 )
 from lsmesher.pipeline_types import Geometry2D, Layer2D
+from lsmesher.validation import validate
 
 
 def fixed_attribute_sampler(_layer, _previous, *, originally_closed):
@@ -167,6 +168,35 @@ def test_simplify_2d_geometry_removes_collinear_point():
 
     assert Point2D(0.5, 0.0) not in result.points
     assert result.attributes == geometry.attributes
+
+
+def test_simplify_2d_geometry_preserves_material_junctions():
+    """Collinear degree-three vertices keep every material-interface branch."""
+    geometry = Geometry2D(
+        points=(
+            Point2D(0.0, 0.0),
+            Point2D(1.0, 0.0),
+            Point2D(2.0, 0.0),
+            Point2D(2.0, 2.0),
+            Point2D(1.0, 2.0),
+            Point2D(0.0, 2.0),
+        ),
+        edges=(
+            Edge(0, 1),
+            Edge(1, 2),
+            Edge(2, 3),
+            Edge(3, 4),
+            Edge(4, 5),
+            Edge(5, 0),
+            Edge(1, 4),
+        ),
+    )
+
+    result = simplify_2d_geometry(geometry, epsilon=1e-6)
+
+    junction = result.points.index(Point2D(1.0, 0.0))
+    assert sum(junction in edge.as_tuple() for edge in result.edges) == 3
+    assert not validate(result).issues
 
 
 def test_build_2d_poly_geometry_chains_steps():
