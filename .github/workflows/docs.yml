@@ -29,7 +29,7 @@ jobs:
         uses: actions/configure-pages@v5
 
       - name: Build
-        run: uvx --from mkdocs --with mkdocs-material mkdocs build --strict
+        run: uvx --from mkdocs --with mkdocs-material --with "mkdocstrings[python]" --with ruff mkdocs build --strict
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3

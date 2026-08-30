@@ -63,6 +63,7 @@ dev = [
     "ruff>=0.15.4",
     "streamlit>=1.57.0",
     "ty>=0.0.19",
+    "mkdocstrings[python]",
 ]
 
 [project.scripts]
