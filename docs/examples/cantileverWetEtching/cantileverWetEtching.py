@@ -16,7 +16,7 @@ args = parser.parse_args()
 if args.dim != 3:
     raise ValueError("Cantilever Wet Etching only supports 3D generation")
 
-maskFileName = "../../viewer_presets/cantileverWetEtching/cantilever_mask.gds"
+maskFileName = "../../../viewer_presets/cantileverWetEtching/cantilever_mask.gds"
 
 # crystal surface direction
 direction100 = [0.707106781187, 0.707106781187, 0.0]
@@ -68,9 +68,7 @@ model = psd.WetEtching(
 )
 
 advectionParams = AdvectionParameters()
-advectionParams.spatialScheme = (
-    SpatialScheme.STENCIL_LOCAL_LAX_FRIEDRICHS_1ST_ORDER
-)
+advectionParams.spatialScheme = SpatialScheme.STENCIL_LOCAL_LAX_FRIEDRICHS_1ST_ORDER
 
 process = psd.Process()
 process.setDomain(geometry)
@@ -83,5 +81,3 @@ for n in range(minutes):
     process.apply()
 
 lsmesh.mesh(geometry, "mesh.vtu", dimension=args.dim)
-
-

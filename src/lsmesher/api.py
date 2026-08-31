@@ -112,10 +112,11 @@ def _viennals_meshes(
         msg = "ViennaLS is required to mesh a ViennaPS domain"
         raise DependencyError(msg) from error
 
+    dimensional_vls = vls.d2 if dimension == 2 else vls.d3
     meshes: list[ViennaLSMesh] = []
     for level_set in domain.getLevelSets():
         mesh = vls.Mesh()
-        vls.ToSurfaceMesh(cast("Any", level_set), mesh).apply()
+        dimensional_vls.ToSurfaceMesh(cast("Any", level_set), mesh).apply()
         meshes.append(cast("ViennaLSMesh", mesh))
 
     if not meshes:

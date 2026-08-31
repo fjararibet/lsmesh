@@ -29,7 +29,7 @@ from lsmesher.meshing import (
     _normalize_source,
 )
 from lsmesher.pipeline_3d import DecimationReport
-from lsmesher.results import MaterialInfo
+from lsmesher.results import MaterialInfo, TetrahedralMesh3D
 
 
 def square_2d() -> Geometry2D:
@@ -234,6 +234,51 @@ def test_automatic_failure_retains_attempt_reports(tmp_path, monkeypatch):
 
     assert len(caught.value.attempts) == 3
     assert all(not attempt.success for attempt in caught.value.attempts)
+
+
+def test_automatic_3d_viennaps_recovers_missing_materials_from_native_volume(
+    tmp_path, monkeypatch
+):
+    class Domain:
+        def getLevelSets(self):  # noqa: N802
+            return ()
+
+        def getMaterialMap(self):  # noqa: N802
+            return object()
+
+    def fail_smooth_mesh(*_args: object, **_kwargs: object):
+        message = "missing materials (0,)"
+        raise InvalidGeometryError(message)
+
+    def native_recovery(_domain, output, _options):
+        points = (
+            Point3D(0.0, 0.0, 0.0),
+            Point3D(1.0, 0.0, 0.0),
+            Point3D(0.0, 1.0, 0.0),
+            Point3D(0.0, 0.0, 1.0),
+        )
+        return MeshResult3D(
+            geometry=triangle_3d(),
+            mesh=TetrahedralMesh3D(points, (Face((0, 1, 2, 3)),), (0,)),
+            materials=(MaterialInfo(1, 0, "Mask"),),
+            output_paths=(output,),
+        )
+
+    monkeypatch.setattr("lsmesher.meshing._mesh_once", fail_smooth_mesh)
+    monkeypatch.setattr(
+        "lsmesher.meshing._mesh_native_viennaps_volume", native_recovery
+    )
+
+    result = mesh(Domain(), tmp_path / "mesh.vtu", dimension=3)  # type: ignore[arg-type]
+
+    assert result.automatic is not None
+    assert result.automatic.selected_attempt == "viennaps-volume-recovery"
+    assert [attempt.success for attempt in result.automatic.attempts] == [
+        False,
+        False,
+        False,
+        True,
+    ]
 
 
 def test_distribution_name_is_importable():

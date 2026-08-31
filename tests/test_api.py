@@ -1,9 +1,13 @@
 """Tests for the public, dependency-light conversion boundary."""
 
+import sys
+from types import SimpleNamespace
+
 import pytest
 
 from lsmesher import BuildOptions, DecimationOptions3D, build_from_files
 from lsmesher.api import (
+    _viennals_meshes,
     build_from_viennaps,
     layer_from_viennals,
     materials_from_viennaps,
@@ -58,6 +62,31 @@ def test_surface_from_viennals_mesh():
         Point3D(0.0, 1.0, 1.0),
     )
     assert surface.faces == (Face((0, 1, 2)),)
+
+
+def test_viennals_mesh_extraction_dispatches_to_requested_dimension(monkeypatch):
+    calls: list[str] = []
+    mesh = FakeMesh(
+        ((0, 0, 0), (1, 0, 0), (0, 1, 0)),
+        triangles=((0, 1, 2),),
+    )
+
+    class Conversion:
+        def apply(self) -> None:
+            calls.append("d3")
+
+    fake_vls = SimpleNamespace(
+        Mesh=lambda: mesh,
+        d2=SimpleNamespace(ToSurfaceMesh=lambda *_args: calls.append("d2")),
+        d3=SimpleNamespace(ToSurfaceMesh=lambda *_args: Conversion()),
+    )
+    domain = SimpleNamespace(getLevelSets=lambda: (object(),))
+    monkeypatch.setitem(sys.modules, "viennals", fake_vls)
+
+    result = _viennals_meshes(domain, 3)
+
+    assert result == (mesh,)
+    assert calls == ["d3"]
 
 
 def test_build_from_files_has_typed_dimension_overloads(tmp_path):

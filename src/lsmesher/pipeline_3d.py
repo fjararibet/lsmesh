@@ -855,8 +855,20 @@ def collect_3d_regions(
     regions: list[Region3D] = []
     for index, surface in enumerate(surfaces):
         lower = surfaces[index - 1] if index else None
+        if index == 0 and len(surfaces) > 1:
+            # Wrapped ViennaPS level sets are cumulative: the base surface can
+            # contain the exposed exterior faces of every material above it.
+            # Those coincident faces are not part of the base material's local
+            # cap and can place its seed inside an upper material (for example,
+            # inside the mask surrounding an etched hole). The base volume is
+            # connected through the closure floor, so use all faces unique from
+            # the next interface as one candidate component.
+            base_faces = _unique_faces(surface, surfaces[1])
+            components = [base_faces or list(surface.faces)]
+        else:
+            components = _face_components(_unique_faces(surface, lower))
         hit_triangles = triangles[index - 1] if index else triangles[index]
-        for component in _face_components(_unique_faces(surface, lower)):
+        for component in components:
             point = _component_region_point(
                 component,
                 surface,

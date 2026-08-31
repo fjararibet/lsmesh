@@ -34,7 +34,7 @@ from lsmesher.errors import (
     TriangleError,
     UnsupportedSourceError,
 )
-from lsmesher.geometry_types import Face, Region3D
+from lsmesher.geometry_types import Face, Point3D, Region3D
 from lsmesher.pipeline_2d import geometry_2d_to_poly_text, read_2d_layers
 from lsmesher.pipeline_3d import (
     DecimationOptions3D,
@@ -624,6 +624,53 @@ def _mesh_automatically(
             automatic=automatic,
             output_paths=(*result.output_paths, report_path),
         )
+    if (
+        dimension == 3
+        and _is_viennaps_domain(source)
+        and last_error is not None
+        and _is_material_completeness_error(last_error)
+    ):
+        recovery_name = "viennaps-volume-recovery"
+        recovery_options = option_attempts[-1]
+        try:
+            result = _with_quality(
+                _mesh_native_viennaps_volume(
+                    cast("ViennaPSDomain", source),
+                    output,
+                    recovery_options,
+                )
+            )
+            _raise_for_quality(result.quality)
+        except LsmesherError as error:
+            attempts.append(
+                _attempt_report(
+                    recovery_name,
+                    recovery_options,
+                    success=False,
+                    error=str(error),
+                )
+            )
+            last_error = error
+        else:
+            attempts.append(
+                _attempt_report(recovery_name, recovery_options, success=True)
+            )
+            quality_target_met = _quality_target_met(result.quality, quality)
+            automatic = AutomaticMeshReport(
+                quality=quality,
+                dimension=dimension,
+                characteristic_length=characteristic,
+                grid_spacing=spacing,
+                selected_attempt=recovery_name,
+                attempts=tuple(attempts),
+                quality_target_met=quality_target_met,
+            )
+            report_path = _write_automatic_report(output, automatic, result.quality)
+            return replace(
+                result,
+                automatic=automatic,
+                output_paths=(*result.output_paths, report_path),
+            )
     if last_error is not None:
         raise AutomaticMeshingError(tuple(attempts), last_error) from last_error
     msg = "Automatic meshing exhausted its attempts"
@@ -641,6 +688,90 @@ def _quality_error(report: MeshQualityReport) -> str:
     if report.unknown_material_ids:
         problems.append(f"unknown materials {report.unknown_material_ids}")
     return "; ".join(problems) or "mesh failed automatic correctness checks"
+
+
+def _is_material_completeness_error(error: Exception) -> bool:
+    message = str(error)
+    return "missing materials" in message or "unknown material attribute" in message
+
+
+def _mesh_native_viennaps_volume(
+    domain: ViennaPSDomain,
+    output: Path,
+    config: MeshingOptions,
+) -> MeshResult3D:
+    """Recover a material-complete mesh from ViennaPS's native tetrahedra.
+
+    Wrapped level-set surfaces occasionally do not form a PLC for every
+    material volume. ViennaPS can still provide its own classified volume
+    representation; this is a conservative final automatic fallback after all
+    smooth TetGen attempts have failed material correctness checks.
+    """
+    if output_format(output) != "vtu":
+        msg = "ViennaPS volume recovery requires VTU output"
+        raise InvalidGeometryError(msg)
+    save_volume_mesh = getattr(domain, "saveVolumeMesh", None)
+    if not callable(save_volume_mesh):
+        msg = "ViennaPS domain does not expose native volume meshing"
+        raise InvalidGeometryError(msg)
+
+    geometry, decimation_report = build_3d_from_viennaps_with_report(
+        domain, options=config.build
+    )
+    validation = validate(geometry)
+    if config.validate:
+        validation.raise_for_errors()
+    materials = materials_from_viennaps(domain)
+
+    import vtk  # noqa: PLC0415
+
+    with tempfile.TemporaryDirectory(prefix="lsmesher-viennaps-volume-") as directory:
+        prefix = Path(directory) / "mesh"
+        try:
+            save_volume_mesh(str(prefix))
+        except RuntimeError as error:
+            msg = f"ViennaPS native volume meshing failed: {error}"
+            raise InvalidGeometryError(msg) from error
+        volume_path = prefix.with_name(f"{prefix.name}_volume.vtu")
+        if not volume_path.exists():
+            msg = "ViennaPS native volume meshing produced no VTU file"
+            raise InvalidGeometryError(msg)
+
+        reader = vtk.vtkXMLUnstructuredGridReader()
+        reader.SetFileName(str(volume_path))
+        reader.Update()
+        grid = reader.GetOutput()
+        material_array = grid.GetCellData().GetArray("Material")
+        if material_array is None:
+            msg = "ViennaPS native volume mesh has no Material cell data"
+            raise InvalidGeometryError(msg)
+
+        points = tuple(
+            Point3D(*map(float, grid.GetPoint(index)))
+            for index in range(grid.GetNumberOfPoints())
+        )
+        tetrahedra: list[Face] = []
+        attributes: list[int] = []
+        for index in range(grid.GetNumberOfCells()):
+            cell = grid.GetCell(index)
+            if cell.GetNumberOfPoints() != 4:
+                msg = "ViennaPS native volume mesh contains non-tetrahedral cells"
+                raise InvalidGeometryError(msg)
+            tetrahedra.append(
+                Face(tuple(cell.GetPointId(vertex) for vertex in range(4)))
+            )
+            attributes.append(int(material_array.GetTuple1(index)))
+
+    native_mesh = TetrahedralMesh3D(points, tuple(tetrahedra), tuple(attributes))
+    write(native_mesh, output)
+    return MeshResult3D(
+        geometry=geometry,
+        mesh=native_mesh,
+        materials=materials,
+        output_paths=(output,),
+        validation=validation,
+        decimation=decimation_report,
+    )
 
 
 def _raise_for_quality(report: MeshQualityReport | None) -> None:

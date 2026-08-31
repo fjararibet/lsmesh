@@ -6,7 +6,7 @@ import pytest
 
 ENTRY_POINTS = tuple(
     path
-    for path in sorted(Path("examples").glob("*/*.py"))
+    for path in sorted(Path("docs/examples").glob("*/*.py"))
     if path.name
     not in {
         "generateRatesData.py",

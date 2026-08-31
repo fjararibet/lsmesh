@@ -533,6 +533,26 @@ def test_collect_3d_regions_samples_each_disconnected_component():
     assert [region.material for region in regions] == [1, 2, 2]
 
 
+def test_base_region_ignores_cumulative_faces_shared_with_upper_surface():
+    """The substrate seed comes from its own exposed cap, not an upper exterior."""
+    shared_top = square_surface(z=1.0)
+    base = Surface3D(
+        points=(
+            *shared_top.points,
+            Point3D(0.0, 0.0, 0.0),
+            Point3D(0.25, 0.0, 0.0),
+            Point3D(0.0, 0.25, 0.0),
+            Point3D(0.25, 0.25, 0.0),
+        ),
+        faces=(shared_top.faces[0], Face((4, 5, 7, 6))),
+    )
+
+    regions = collect_3d_regions((base, shared_top), material_ids=(10, 0))
+
+    substrate = next(region for region in regions if region.material == 10)
+    assert substrate.point.z < 0.0
+
+
 def test_upper_region_sampling_selects_widest_deterministic_interval(monkeypatch):
     surface = Surface3D(
         points=(
