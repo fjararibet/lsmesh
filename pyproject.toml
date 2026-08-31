@@ -106,7 +106,7 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "src/lsmesher/cli.py" = ["S606"]
-"examples/**/*" = ["ALL"]
+"docs/examples/**/*" = ["ALL"]
 "viewer_presets/**/*" = ["ALL"]
 "interface_extraction_example/**/*" = ["ALL"]
 "interface_extraction_example_3D/**/*" = ["ALL"]

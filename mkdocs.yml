@@ -19,6 +19,11 @@ theme:
 
 docs_dir: docs
 
+markdown_extensions:
+  - pymdownx.snippets:
+      base_path: [docs]
+      check_paths: true
+
 plugins:
   - search
   - mkdocstrings:
@@ -41,6 +46,31 @@ nav:
   - Automatic mesh quality: quality.md
   - Lower-level options: options.md
   - Reference: reference.md
+  - Examples:
+      - Overview: examples/index.md
+      - Atomic layer deposition: examples/atomicLayerDeposition.md
+      - Blazed grating etching: examples/blazedGratingsEtching.md
+      - Bosch process: examples/boschProcess.md
+      - Cantilever wet etching: examples/cantileverWetEtching.md
+      - DRAM wiggling: examples/DRAMWiggling.md
+      - Process emulation: examples/emulation.md
+      - Faraday-cage etching: examples/faradayCageEtching.md
+      - Fin oxidation: examples/finOxidation.md
+      - GDS import: examples/GDSReader.md
+      - Hole etching: examples/holeEtching.md
+      - Ion-beam etching: examples/ionBeamEtching.md
+      - LOCOS oxidation: examples/locosOxidation.md
+      - Oxide regrowth: examples/oxideRegrowth.md
+      - Selective epitaxy: examples/selectiveEpitaxy.md
+      - SiGe selective etching: examples/SiGeSelectiveEtching.md
+      - Simple etching: examples/simpleEtching.md
+      - Sputter deposition: examples/sputterDeposition.md
+      - Stack etching: examples/stackEtching.md
+      - Step oxidation: examples/stepOxidation.md
+      - TEOS trench deposition: examples/TEOSTrenchDeposition.md
+      - Trench deposition: examples/trenchDeposition.md
+      - Geometric trench deposition: examples/trenchDepositionGeometric.md
+      - Trench oxidation: examples/trenchOxidation.md
 
 exclude_docs: |
   /3d-*.md
@@ -48,3 +78,7 @@ exclude_docs: |
   /material-identities.md
   /publishing.md
   /sdk-viewer-presets.md
+  /examples/**/*.vtu
+  /examples/**/*.vtp
+  /examples/**/CMakeLists.txt
+  /examples/**/README.md

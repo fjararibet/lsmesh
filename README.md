@@ -164,7 +164,7 @@ from lsmesh.geometry import Surface3D
 from lsmesh.options import MeshOptions
 ```
 
-See [`examples/`](examples/) for complete ViennaPS scripts using lsmesh.
+See [`docs/examples/`](docs/examples) for complete ViennaPS scripts using lsmesh.
 
 ## Command-line interface
 

@@ -85,6 +85,13 @@
           };
           runViewer = mkLsmesherApp "lsmesher-viewer" "--extra viewer lsmesher-viewer";
           runCli = mkLsmesherApp "lsmesher" "lsmesher";
+          runDocs = pkgs.writeShellApplication {
+            name = "lsmesher-docs";
+            runtimeInputs = [ pkgs.uv ];
+            text = ''
+              exec uvx --from mkdocs --with mkdocs-material --with "mkdocstrings[python]" --with ruff mkdocs serve "$@"
+            '';
+          };
         in
         {
           apps.default = {
@@ -101,6 +108,11 @@
             type = "app";
             program = "${runCli}/bin/lsmesher";
             meta.description = "Run the lsmesher command-line interface";
+          };
+          apps.docs = {
+            type = "app";
+            program = "${runDocs}/bin/lsmesher-docs";
+            meta.description = "Serve the documentation site locally";
           };
 
           devShells.default = pkgs.mkShell {
