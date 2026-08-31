@@ -11,21 +11,20 @@ Geometry (2-D cross-section, extruded symmetrically in Z for 3-D):
     · Si fin centered at x = 0: width finWidth, height finHeight
 
 Usage:
-    python finOxidation.py [config.txt]
+    python finOxidation.py
 
 All lengths are in micrometers, time in hours, pressure in atm.
 """
 
-import sys
 import time
 import viennaps as vps
 import lsmesh
 
-# ── Default parameters (match finOxidation/config.txt) ──────────────────────
+# ── Parameters ───────────────────────────────────────────────────────────────
 cfg = {
-    "dimensions":    2,
+    "dimensions":    3,
     "numThreads":    16,
-    "gridDelta":     0.05,
+    "gridDelta":     0.01,
     "xExtent":       0.6,
     "finWidth":      0.2,
     "finHeight":     0.5,
@@ -36,30 +35,11 @@ cfg = {
     "oxidant":            "wet",
     "orientation":        "100",
     "outputPrefix":       "ps_fin_oxidation",
-    "zExtent":       0.0,   # 3D only: half-depth in Z; defaults to xExtent if 0
+    "zExtent":       0.03,
     "maxGridPoints":      0,   # 0 = unlimited; set >0 to cap the Cartesian solve grid
-    "useGpu":             "auto",   # auto | gpu | cpu
+    "useGpu":             "cpu",   # auto | gpu | cpu
     "gpuPreconditioner":  "jacobi", # jacobi | ilu0
 }
-
-
-def _parse_config(path: str) -> None:
-    try:
-        with open(path) as f:
-            for line in f:
-                line = line.strip()
-                if not line or line.startswith("#"):
-                    continue
-                eq = line.find("=")
-                if eq < 0:
-                    continue
-                key = line[:eq].strip()
-                val = line[eq + 1:].split("#")[0].strip()
-                if key in cfg:
-                    t = type(cfg[key])
-                    cfg[key] = t(val)
-    except FileNotFoundError:
-        pass
 
 
 def _parse_oxidant(s: str):
@@ -83,10 +63,6 @@ def _parse_orientation(s: str):
         return vps.SiliconOrientation.PolySi
     raise ValueError(f"Unknown orientation '{s}'. Use 100, 110, 111, or poly.")
 
-
-# ── Config file ───────────────────────────────────────────────────────────────
-config_file = sys.argv[1] if len(sys.argv) > 1 else "config.txt"
-_parse_config(config_file)
 
 vps.setDimension(cfg["dimensions"])
 vps.setNumThreads(cfg["numThreads"])

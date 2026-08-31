@@ -20,7 +20,7 @@ directory:
 
 ```bash
 cd docs/examples/trenchDeposition
-uv run python trenchDeposition.py -D 3 config.txt
+uv run python trenchDeposition.py -D 3
 ```
 
 ## Deposition

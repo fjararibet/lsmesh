@@ -7,15 +7,9 @@ Orientation-dependent wet etching releases a cantilever beneath a mask.
 Run from the repository root:
 
 ```bash
-cd docs/examples/cantileverWetEtching && uv run python cantileverWetEtching.py -D 3 config.txt
+cd docs/examples/cantileverWetEtching && uv run python cantileverWetEtching.py -D 3
 ```
 
 ```python
 --8<-- "examples/cantileverWetEtching/cantileverWetEtching.py"
-```
-
-### Configuration
-
-```text
---8<-- "examples/cantileverWetEtching/config.txt"
 ```

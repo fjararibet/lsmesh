@@ -7,7 +7,6 @@ import lsmesh
 
 parser = ArgumentParser(description="Run the stacked nanowire process emulation.")
 parser.add_argument("-D", "-DIM", dest="dim", type=int, default=3)
-parser.add_argument("filename")
 args = parser.parse_args()
 if args.dim != 3:
     raise ValueError("Stacked Nanowire Emulation only supports 3D generation")
@@ -187,6 +186,5 @@ ps.Process(domain, growth, 20.0).apply()
 ps.Planarize(domain, 47.5).apply()
 
 lsmesh.mesh(domain, "mesh.vtu", dimension=args.dim)
-
 
 

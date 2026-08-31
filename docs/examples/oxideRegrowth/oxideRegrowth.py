@@ -1,4 +1,3 @@
-import sys
 from argparse import ArgumentParser
 
 # parse config file name and simulation dimension
@@ -7,7 +6,6 @@ parser = ArgumentParser(
     description="Model oxide regrowth during SiN etching in SiN/SiO2 stack.",
 )
 parser.add_argument("-D", "-DIM", dest="dim", type=int, default=2)
-parser.add_argument("filename")
 args = parser.parse_args()
 
 import viennaps as ps
@@ -22,17 +20,30 @@ else:
     print("Running 3D simulation.")
 ps.setDimension(args.dim)
 
-params = ps.readConfigFile(args.filename)
+params = {
+    "gridDelta": 2.0,
+    "xExtent": 400.0,
+    "yExtent": 100.0,
+    "numLayers": 7,
+    "layerHeight": 30.0,
+    "substrateHeight": 50.0,
+    "trenchWidth": 150.0,
+    "nitrideEtchRate": 6.5,
+    "oxideEtchRate": 0.0,
+    "targetEtchDepth": 100.0,
+    "diffusionCoefficient": 50.0,
+    "sink": 0.1,
+    "scallopVelocity": 5.0,
+    "centerVelocity": 7.5,
+    "redepositionRate": 0.01,
+    "redepositionTimeInt": 60.0,
+    "redepositionThreshold": 0.2,
+}
 
 NUM_THREADS = 12
 TIME_STABILITY_FACTOR = 0.245 if args.dim == 2 else 0.145
 
 ps.Logger.setLogLevel(ps.LogLevel.INTERMEDIATE)
-
-# Check for config file argument
-if len(sys.argv) < 2:
-    print(f"Usage: {sys.argv[0]} <config file>")
-    sys.exit(1)
 
 # Type alias for clarity
 NumericType = float
@@ -47,7 +58,7 @@ print(f"Stability: {stability}")
 
 if 0.5 * stability <= params["gridDelta"]:
     print("Unstable parameters. Reduce grid spacing!")
-    sys.exit(-1)
+    raise SystemExit(-1)
 
 # Create domain
 geometry = ps.Domain(
@@ -119,6 +130,4 @@ process.setParameters(advParams)
 process.apply()
 
 lsmesh.mesh(geometry, "mesh.vtu", dimension=args.dim)
-
-
 

@@ -10,14 +10,31 @@ parser = ArgumentParser(
     description="Run a oblique ion beam etching process on a grating.",
 )
 parser.add_argument("-D", "-DIM", dest="dim", type=int, default=2)
-parser.add_argument("filename")
 args = parser.parse_args()
 if args.dim != 2:
     message = "blazedGratingsEtching only supports 2D generation."
     raise ValueError(message)
 ps.setDimension(args.dim)
 
-params = ps.readConfigFile(args.filename)
+params = {
+    "gridDelta": 3.0,
+    "yExtent": 100.0,
+    "raysPerPoint": 1000,
+    "numBumps": 3,
+    "bumpHeight": 100.0,
+    "bumpWidth": 190,
+    "bumpDuty": 0.43,
+    "phi1": 10,
+    "phi2": 54,
+    "yieldFactor": 1.075,
+    "meanEnergy": 200,
+    "exponent": 300,
+    "ANSGM_Depth": 160,
+    "etchTimeP1": 60,
+    "etchTimeP2": 30,
+    "etchTimeP3": 30,
+    "etchTimeP4": 30,
+}
 
 # ----- Geometry Generation ----- #
 bumpWidth = params["bumpWidth"]
@@ -124,6 +141,5 @@ def BlazedGratings_Etch():
 BlazedGratings_Etch()
 
 lsmesh.mesh(geometry, "mesh.vtu", dimension=args.dim)
-
 
 

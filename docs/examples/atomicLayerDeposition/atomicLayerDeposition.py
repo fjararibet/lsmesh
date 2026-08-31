@@ -8,14 +8,39 @@ import lsmesh
 
 parser = ArgumentParser(description="Run atomic layer deposition.")
 parser.add_argument("-D", "-DIM", dest="dim", type=int, default=2)
-parser.add_argument("filename")
 args = parser.parse_args()
 if args.dim != 2:
     raise ValueError("Atomic Layer Deposition only supports 2D generation")
 ps.setDimension(args.dim)
 ls.setDimension(args.dim)
 
-config = ps.readConfigFile(args.filename)
+config = {
+    "gridDelta": 0.1,
+    "openingDepth": 0.5,
+    "openingWidth": 90,
+    "gapLength": 800,
+    "gapHeight": 0.5,
+    "gapWidth": 10000,
+    "xPad": 0.5,
+    "topSpace": 0.0,
+    "pulseTime": 0.1,
+    "purgePulseTime": 0.05,
+    "coverageTimeStep": 0.01,
+    "growthPerCycle": 0.000112,
+    "numCycles": 10,
+    "totalCycles": 800,
+    "pressure": 0.1,
+    "temperature": 220,
+    "diameter": 2.75,
+    "mass": 28.02,
+    "inFlux": 2e6,
+    "stickingProbability": 5e-5,
+    "evFlux": 2.5,
+    "s0": 3.36,
+    "numRaysPerPoint": 1000,
+    "rngSeed": 15123512,
+    "outputFile": "arts_220_c8.txt",
+}
 geometry = ps.Domain()
 
 # Create the geometry
@@ -91,6 +116,5 @@ ALP.apply()
 # #       .save(params.get<std::string>("outputFile"));
 
 lsmesh.mesh(geometry, "mesh.vtu", dimension=args.dim)
-
 
 

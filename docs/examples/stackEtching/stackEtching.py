@@ -9,7 +9,6 @@ parser = ArgumentParser(
     description="Run a etching process on a stack of Si3N4/SiO2 layers.",
 )
 parser.add_argument("-D", "-DIM", dest="dim", type=int, default=2)
-parser.add_argument("filename")
 args = parser.parse_args()
 if args.dim != 2:
     message = "stackEtching only supports 2D generation."
@@ -19,7 +18,25 @@ if args.dim != 2:
 vps.Logger.setLogLevel(vps.LogLevel.INFO)
 
 # Parse process parameters
-params = vps.readConfigFile(args.filename)
+params = {
+    "lengthUnit": "nm",
+    "gridDelta": 2.0,
+    "xExtent": 120.0,
+    "yExtent": 120.0,
+    "numLayers": 5,
+    "layerHeight": 30.0,
+    "substrateHeight": 50.0,
+    "trenchWidth": 75,
+    "maskHeight": 50,
+    "processTime": 30,
+    "timeUnit": "s",
+    "etchantFlux": 150,
+    "polyFlux": 5,
+    "ionFlux": 56,
+    "meanIonEnergy": 100.0,
+    "sigmaIonEnergy": 10.0,
+    "ionExponent": 100.0,
+}
 
 vps.Length.setUnit(params["lengthUnit"])
 vps.Time.setUnit(params["timeUnit"])
@@ -101,6 +118,5 @@ process.setParameters(advParams)
 process.apply()
 
 lsmesh.mesh(geometry, "mesh.vtu", dimension=args.dim)
-
 
 

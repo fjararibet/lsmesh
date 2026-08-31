@@ -7,15 +7,9 @@ Local oxidation of silicon through a nitride mask.
 Run from the repository root:
 
 ```bash
-cd docs/examples/locosOxidation && uv run python locosOxidation.py config.txt
+cd docs/examples/locosOxidation && uv run python locosOxidation.py
 ```
 
 ```python
 --8<-- "examples/locosOxidation/locosOxidation.py"
-```
-
-### Configuration
-
-```text
---8<-- "examples/locosOxidation/config.txt"
 ```

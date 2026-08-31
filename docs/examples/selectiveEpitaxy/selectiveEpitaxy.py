@@ -9,7 +9,6 @@ parser = ArgumentParser(
     description="Run a selective epitaxial growth process.",
 )
 parser.add_argument("-D", "-DIM", dest="dim", type=int, default=2)
-parser.add_argument("filename")
 args = parser.parse_args()
 
 # switch between 2D and 3D mode
@@ -19,7 +18,19 @@ else:
     print("Running 3D simulation.")
 ps.setDimension(args.dim)
 
-params = ps.readConfigFile(args.filename)
+params = {
+    "gridDelta": 0.4,
+    "xExtent": 30.0,
+    "yExtent": 20.0,
+    "finWidth": 7.0,
+    "finHeight": 10.0,
+    "oxideHeight": 3.0,
+    "etchTime": 4.0,
+    "processTime": 5.0,
+    "epitaxyRate": 2.0,
+    "R111": 0.4,
+    "R100": 1.0,
+}
 
 geometry = ps.Domain(
     gridDelta=params["gridDelta"], xExtent=params["xExtent"], yExtent=params["yExtent"]
@@ -58,6 +69,5 @@ process.setParameters(advectionParams)
 process.apply()
 
 lsmesh.mesh(geometry, "mesh.vtu", dimension=args.dim)
-
 
 

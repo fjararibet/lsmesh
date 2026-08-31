@@ -7,17 +7,11 @@ Deep reactive-ion etching alternating an etch step with fluoropolymer passivatio
 Run from the repository root:
 
 ```bash
-cd docs/examples/boschProcess && uv run python boschProcessRayTracing.py -D 3 configBoschRayTracing.txt
+cd docs/examples/boschProcess && uv run python boschProcessRayTracing.py -D 3
 ```
 
 ```python
 --8<-- "examples/boschProcess/boschProcessRayTracing.py"
-```
-
-### Configuration
-
-```text
---8<-- "examples/boschProcess/configBoschRayTracing.txt"
 ```
 
 ## Process simulation
@@ -25,17 +19,11 @@ cd docs/examples/boschProcess && uv run python boschProcessRayTracing.py -D 3 co
 Run from the repository root:
 
 ```bash
-cd docs/examples/boschProcess && uv run python boschProcessSimulate.py -D 2 config.txt
+cd docs/examples/boschProcess && uv run python boschProcessSimulate.py -D 2
 ```
 
 ```python
 --8<-- "examples/boschProcess/boschProcessSimulate.py"
-```
-
-### Configuration
-
-```text
---8<-- "examples/boschProcess/config.txt"
 ```
 
 ## Geometric emulation

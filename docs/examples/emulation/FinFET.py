@@ -7,7 +7,6 @@ import lsmesh
 
 parser = ArgumentParser(description="Run the FinFET process emulation.")
 parser.add_argument("-D", "-DIM", dest="dim", type=int, default=3)
-parser.add_argument("filename")
 args = parser.parse_args()
 if args.dim != 3:
     raise ValueError("FinFET Emulation only supports 3D generation")
@@ -232,6 +231,5 @@ ps.Planarize(domain, 90.0).apply()
 writeSurface(domain)
 
 lsmesh.mesh(domain, "mesh.vtu", dimension=args.dim)
-
 
 

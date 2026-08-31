@@ -7,17 +7,11 @@ CSV-rate-driven sputter deposition in 2D and 3D.
 Run from the repository root:
 
 ```bash
-cd docs/examples/sputterDeposition && uv run python sputterDeposition.py -D 2 config2D.txt
+cd docs/examples/sputterDeposition && uv run python sputterDeposition.py -D 2
 ```
 
 ```python
 --8<-- "examples/sputterDeposition/sputterDeposition.py"
-```
-
-### Configuration
-
-```text
---8<-- "examples/sputterDeposition/config2D.txt"
 ```
 
 ## 3D
@@ -25,15 +19,9 @@ cd docs/examples/sputterDeposition && uv run python sputterDeposition.py -D 2 co
 Run from the repository root:
 
 ```bash
-cd docs/examples/sputterDeposition && uv run python sputterDeposition3D.py -D 3 config3D.txt
+cd docs/examples/sputterDeposition && uv run python sputterDeposition3D.py -D 3
 ```
 
 ```python
 --8<-- "examples/sputterDeposition/sputterDeposition3D.py"
-```
-
-### Configuration
-
-```text
---8<-- "examples/sputterDeposition/config3D.txt"
 ```

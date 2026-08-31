@@ -7,15 +7,9 @@ Etching through a layered material stack.
 Run from the repository root:
 
 ```bash
-cd docs/examples/stackEtching && uv run python stackEtching.py -D 2 config.txt
+cd docs/examples/stackEtching && uv run python stackEtching.py -D 2
 ```
 
 ```python
 --8<-- "examples/stackEtching/stackEtching.py"
-```
-
-### Configuration
-
-```text
---8<-- "examples/stackEtching/config.txt"
 ```

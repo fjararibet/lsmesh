@@ -6,7 +6,6 @@ import lsmesh
 # parse config file name and simulation dimension
 parser = ArgumentParser(prog="holeEtching", description="Run a hole etching process.")
 parser.add_argument("-D", "-DIM", dest="dim", type=int, default=2)
-parser.add_argument("filename")
 args = parser.parse_args()
 
 # switch between 2D and 3D mode
@@ -17,7 +16,31 @@ else:
 ps.setDimension(args.dim)
 ps.setNumThreads(16)
 
-params = ps.readConfigFile(args.filename)
+params = {
+    "lengthUnit": "micrometer",
+    "gridDelta": 0.1,
+    "xExtent": 1.0,
+    "yExtent": 1.0,
+    "holeRadius": 0.175,
+    "maskHeight": 1.2,
+    "taperAngle": 1.193,
+    "processTime": 0.02,
+    "timeUnit": "minute",
+    "ionFlux": 10.0,
+    "etchantFlux": 4.5e3,
+    "oxygenFlux": 8e2,
+    "ionExponent": 1000,
+    "meanEnergy": 100,
+    "sigmaEnergy": 10,
+    "A_O": 2,
+    "A_Si": 7,
+    "etchStopDepth": -10,
+    "spatialScheme": "EO_1",
+    "temporalScheme": "RK3",
+    "fluxEngine": "CT",
+    "raysPerPoint": 50,
+    "outputFile": "final_CPU.vtp",
+}
 
 unit_aliases = {
     "um": "micrometer",
@@ -117,6 +140,5 @@ def run_simulation(intermediate_velocities):
 
 print("Running simulation...")
 run_simulation(False)
-
 
 

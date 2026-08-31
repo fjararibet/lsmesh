@@ -8,7 +8,6 @@ import lsmesh
 
 parser = ArgumentParser(description="Run selective SiGe stack etching.")
 parser.add_argument("-D", "-DIM", dest="dim", type=int, default=2)
-parser.add_argument("filename")
 args = parser.parse_args()
 if args.dim != 2:
     raise ValueError("SiGe Selective Etching only supports 2D generation")
@@ -32,7 +31,23 @@ paramDict = {
 }
 geometry = CreateGeometry(paramDict)
 
-params = ps.readConfigFile(args.filename)
+params = {
+    "timeUnit": "second",
+    "lengthUnit": "nanometer",
+    "processTime": 10,
+    "etchantFlux": 5e2,
+    "oxygenFlux": 5e1,
+    "polymerFlux": 5.0,
+    "ionFlux": 0.0,
+    "ionExponent": 200,
+    "meanEnergy": 100,
+    "sigmaEnergy": 10,
+    "A_O": 2,
+    "A_C": 2,
+    "A_Si": 7,
+    "raysPerPoint": 1000,
+    "outputFile": "final_y0p62",
+}
 
 ps.Logger.setLogLevel(ps.LogLevel.INFO)
 
@@ -101,6 +116,5 @@ process.setParameters(advParams)
 process.apply()
 
 lsmesh.mesh(geometry, "mesh.vtu", dimension=args.dim)
-
 
 

@@ -26,7 +26,6 @@ import lsmesh
 
 parser = ArgumentParser(description="Run the SAQP process emulation.")
 parser.add_argument("-D", "-DIM", dest="dim", type=int, default=2)
-parser.add_argument("filename")
 args = parser.parse_args()
 if args.dim != 2:
     raise ValueError("SAQP Emulation only supports 2D generation")
@@ -228,6 +227,5 @@ print(f"  - Pattern multiplication: 1 mandrel -> 4 features")
 print(f"  - Grid resolution: {gridDelta} nm")
 print("\nWrote final level-set interface .vtp files.")
 print("=" * 60 + "\n")
-
 
 

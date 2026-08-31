@@ -6,7 +6,6 @@ parser = ArgumentParser(
     description="Run hole deposition with a CSV-defined rate profile.",
 )
 parser.add_argument("-D", "-DIM", dest="dim", type=int, default=3)
-parser.add_argument("filename")
 parser.add_argument(
     "--visualize", action="store_true", help="Visualize the rate and geometry domains"
 )
@@ -25,8 +24,21 @@ ps.setDimension(args.dim)
 ps.Logger.setLogLevel(ps.LogLevel.ERROR)
 ps.setNumThreads(16)
 
-# Load config
-params = ps.readConfigFile(args.filename)
+# Parameters
+params = {
+    "gridDelta": 0.1,
+    "xExtent": 15,
+    "yExtent": 15,
+    "offsetX": 12.0,
+    "offsetY": 15.0,
+    "holeRadius": 2.0,
+    "holeDepth": 7.5,
+    "taperingAngle": 1.5,
+    "depositionTime": 1.5,
+    "numCycles": 10,
+    "interpolationMode": "linear",
+    "ratesFile": "rates3D.csv",
+}
 
 # Optional rate profile plot
 if args.visualize:

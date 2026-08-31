@@ -8,7 +8,6 @@ parser = ArgumentParser(
     prog="faradayCageEtching", description="Run a faraday cage etching process."
 )
 parser.add_argument("-D", "-DIM", dest="dim", type=int, default=2)
-parser.add_argument("filename")
 args = parser.parse_args()
 
 
@@ -18,7 +17,16 @@ if args.dim == 2:
 else:
     print("Running 3D simulation.")
 ps.setDimension(args.dim)
-params = ps.readConfigFile(args.filename)
+params = {
+    "gridDelta": 0.25,
+    "xExtent": 10.0,
+    "yExtent": 10.0,
+    "finWidth": 2.0,
+    "maskHeight": 0.5,
+    "tiltAngle": 60.0,
+    "cageAngle": 90.0,
+    "etchTime": 0.5,
+}
 
 # print intermediate output surfaces during the process
 ps.Logger.setLogLevel(ps.LogLevel.INFO)
@@ -60,6 +68,5 @@ process.setProcessDuration(params["etchTime"])  # seconds
 process.apply()
 
 lsmesh.mesh(geometry, "mesh.vtu", dimension=args.dim)
-
 
 

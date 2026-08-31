@@ -8,7 +8,6 @@ parser = ArgumentParser(
     description="Run trench deposition with a rate profile from a CSV file.",
 )
 parser.add_argument("-D", "-DIM", dest="dim", type=int, default=2)
-parser.add_argument("filename")
 parser.add_argument(
     "--visualize", action="store_true", help="Visualize the rate and geometry domains"
 )
@@ -25,8 +24,22 @@ ps.setDimension(args.dim)
 ps.Logger.setLogLevel(ps.LogLevel.ERROR)
 ps.setNumThreads(16)
 
-# Load parameters
-params = ps.readConfigFile(args.filename)
+# Parameters
+params = {
+    "gridDelta": 0.025,
+    "xExtent": 3.5,
+    "yExtent": 3.5,
+    "offsetX": 10.0,
+    "trenchWidth": 1.0,
+    "trenchDepth": 3.5,
+    "holeRadius": 0.5,
+    "holeDepth": 3.5,
+    "taperingAngle": 2.5,
+    "depositionTime": 1.5,
+    "numCycles": 20,
+    "interpolationMode": "linear",
+    "ratesFile": "rates2D.csv",
+}
 
 if args.visualize:
     from visualizeDomain import visualize2d

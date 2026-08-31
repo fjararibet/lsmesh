@@ -9,7 +9,6 @@ parser = ArgumentParser(
     prog="DRAMWiggling",
     description="Run a DRAM etching process which results in AA wiggling.",
 )
-parser.add_argument("filename")
 parser.add_argument("-D", "-DIM", dest="dim", type=int, default=3)
 args = parser.parse_args()
 
@@ -24,7 +23,22 @@ boundaryConds = [
     ps.BoundaryType.INFINITE_BOUNDARY,
 ]
 
-params = ps.readConfigFile(args.filename)
+params = {
+    "lengthUnit": "um",
+    "processTime": 1,
+    "timeUnit": "second",
+    "ionFlux": 10.0,
+    "etchantFlux": 4.5e3,
+    "oxygenFlux": 2.5e3,
+    "ionExponent": 1000,
+    "meanEnergy": 200,
+    "sigmaEnergy": 10,
+    "spatialScheme": "LF_2",
+    "numSteps": 20,
+    "raysPerPoint": 1000,
+    "fluxEngine": "CD",
+    "gdsFile": "../../viewer_presets/DRAMWiggling/wiggle_full.gds",
+}
 
 mask = ps.GDSGeometry(gridDelta, boundaryConds)
 mask.setBoundaryPadding(0.1, 0.1)
@@ -81,6 +95,5 @@ for i in range(numSteps):
     process.apply()
 
 lsmesh.mesh(geometry, "mesh.vtu", dimension=args.dim)
-
 
 

@@ -7,15 +7,9 @@ Particle-based deposition fills trenches.
 Run from the repository root:
 
 ```bash
-cd docs/examples/trenchDeposition && uv run python trenchDeposition.py -D 2 config.txt
+cd docs/examples/trenchDeposition && uv run python trenchDeposition.py -D 2
 ```
 
 ```python
 --8<-- "examples/trenchDeposition/trenchDeposition.py"
-```
-
-### Configuration
-
-```text
---8<-- "examples/trenchDeposition/config.txt"
 ```

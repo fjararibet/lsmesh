@@ -11,7 +11,6 @@ import lsmesh
 
 parser = ArgumentParser(description="Run the cantilever wet etching example.")
 parser.add_argument("-D", "-DIM", dest="dim", type=int, default=3)
-parser.add_argument("filename")
 args = parser.parse_args()
 if args.dim != 3:
     raise ValueError("Cantilever Wet Etching only supports 3D generation")

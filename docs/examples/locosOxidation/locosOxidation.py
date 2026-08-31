@@ -16,22 +16,21 @@ surface mesh every timeStep hours; the model may use smaller CFL-limited
 internal physics steps between saved meshes.
 
 Usage:
-    python locosOxidation.py [config.txt]
+    python locosOxidation.py
 
 All lengths are in micrometers, time in hours, pressure in atm.
 """
 
-import sys
 import viennals as vls
 import viennaps as vps
 import lsmesh
 
 vps.setDimension(2)
 
-# ── Default parameters (match locosOxidation/config.txt) ─────────────────────
+# ── Parameters ───────────────────────────────────────────────────────────────
 cfg = {
-    "numThreads":          4,
-    "gridDelta":           0.05,   # coarse default; config.txt uses 0.005 (GPU)
+    "numThreads":         16,
+    "gridDelta":       0.005,
     "xExtent":             1.0,
     "yMin":               -1.0,
     "yMax":                2.0,
@@ -76,28 +75,6 @@ cfg = {
 }
 
 
-def _parse_config(path: str) -> None:
-    try:
-        with open(path) as f:
-            for line in f:
-                line = line.strip()
-                if not line or line.startswith("#"):
-                    continue
-                eq = line.find("=")
-                if eq < 0:
-                    continue
-                key = line[:eq].strip()
-                val = line[eq + 1:].split("#")[0].strip()  # strip inline comments
-                if key in cfg:
-                    t = type(cfg[key])
-                    if t is bool:
-                        cfg[key] = val.lower() in ("true", "1", "yes")
-                    else:
-                        cfg[key] = t(val)
-    except FileNotFoundError:
-        pass
-
-
 def _parse_oxidant(s: str):
     s = s.lower()
     if s in ("wet", "h2o"):
@@ -119,10 +96,6 @@ def _parse_orientation(s: str):
         return vps.SiliconOrientation.PolySi
     raise ValueError(f"Unknown orientation '{s}'. Use 100, 110, 111, or poly.")
 
-
-# ── Config file ───────────────────────────────────────────────────────────────
-config_file = sys.argv[1] if len(sys.argv) > 1 else "config.txt"
-_parse_config(config_file)
 
 vps.setNumThreads(cfg["numThreads"])
 vps.Logger.setLogLevel(vps.LogLevel.INFO)

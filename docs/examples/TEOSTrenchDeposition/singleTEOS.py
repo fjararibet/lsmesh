@@ -9,7 +9,6 @@ parser = ArgumentParser(
     description="Run a deposition process on a trench geometry.",
 )
 parser.add_argument("-D", "-DIM", dest="dim", type=int, default=2)
-parser.add_argument("filename")
 args = parser.parse_args()
 
 if args.dim == 2:
@@ -19,7 +18,19 @@ else:
     print("Running 3D simulation.")
     ps.setDimension(3)
 
-params = ps.readConfigFile(args.filename)
+params = {
+    "gridDelta": 2.5,
+    "xExtent": 110.0,
+    "yExtent": 110.0,
+    "trenchWidth": 70,
+    "trenchHeight": 70,
+    "taperAngle": 0.0,
+    "processTime": 350,
+    "numRaysPerPoint": 1000,
+    "depositionRateP1": 0.1,
+    "stickingProbabilityP1": 0.1,
+    "reactionOrderP1": 1.0,
+}
 
 geometry = ps.Domain(
     gridDelta=params["gridDelta"],
@@ -56,6 +67,5 @@ process.setProcessDuration(params["processTime"])
 process.apply()
 
 lsmesh.mesh(geometry, "mesh.vtu", dimension=args.dim)
-
 
 

@@ -9,7 +9,6 @@ parser = ArgumentParser(
     description="Run a Bosch process simulation on a trench geometry.",
 )
 parser.add_argument("-D", "-DIM", dest="dim", type=int, default=2)
-parser.add_argument("filename")
 args = parser.parse_args()
 
 # switch between 2D and 3D mode
@@ -20,7 +19,21 @@ else:
 ps.setDimension(args.dim)
 
 ps.Logger.setLogLevel(ps.LogLevel.ERROR)
-params = ps.readConfigFile(args.filename)
+params = {
+    "gridDelta": 0.1,
+    "xExtent": 3.5,
+    "yExtent": 1.5,
+    "trenchWidth": 2.0,
+    "maskHeight": 0.6,
+    "depositionStickingProbability": 0.01,
+    "depositionThickness": 0.075,
+    "neutralStickingProbability": 0.1,
+    "neutralRate": -0.2,
+    "ionSourceExponent": 200,
+    "ionRate": -0.1,
+    "etchTime": 0.5,
+    "numCycles": 1,
+}
 ps.setNumThreads(16)
 
 geometry = ps.Domain(
@@ -94,6 +107,5 @@ for i in range(numCycles):
     geometry.removeStrayPoints()
 
 lsmesh.mesh(geometry, "mesh.vtu", dimension=args.dim)
-
 
 

@@ -11,21 +11,20 @@ Geometry (2-D cross-section, extruded symmetrically in Z for 3-D):
     · Trench centered at x = 0: width trenchWidth, depth trenchDepth (into Si)
 
 Usage:
-    python trenchOxidation.py [config.txt]
+    python trenchOxidation.py
 
 All lengths are in micrometers, time in hours, pressure in atm.
 """
 
-import sys
 import time
 import viennaps as vps
 import lsmesh
 
-# ── Default parameters (match trenchOxidation/config.txt) ───────────────────
+# ── Parameters ───────────────────────────────────────────────────────────────
 cfg = {
     "dimensions":    2,
     "numThreads":    16,
-    "gridDelta":     0.05,
+    "gridDelta":     0.005,
     "xExtent":       0.6,
     "zExtent":       0.0,   # 3D only: half-depth in Z; defaults to xExtent if 0
     "trenchWidth":   0.3,
@@ -41,25 +40,6 @@ cfg = {
     "useGpu":             "auto",   # auto | gpu | cpu
     "gpuPreconditioner":  "jacobi", # jacobi | ilu0
 }
-
-
-def _parse_config(path: str) -> None:
-    try:
-        with open(path) as f:
-            for line in f:
-                line = line.strip()
-                if not line or line.startswith("#"):
-                    continue
-                eq = line.find("=")
-                if eq < 0:
-                    continue
-                key = line[:eq].strip()
-                val = line[eq + 1:].split("#")[0].strip()
-                if key in cfg:
-                    t = type(cfg[key])
-                    cfg[key] = t(val)
-    except FileNotFoundError:
-        pass
 
 
 def _parse_oxidant(s: str):
@@ -83,10 +63,6 @@ def _parse_orientation(s: str):
         return vps.SiliconOrientation.PolySi
     raise ValueError(f"Unknown orientation '{s}'. Use 100, 110, 111, or poly.")
 
-
-# ── Config file ───────────────────────────────────────────────────────────────
-config_file = sys.argv[1] if len(sys.argv) > 1 else "config.txt"
-_parse_config(config_file)
 
 vps.setDimension(cfg["dimensions"])
 vps.setNumThreads(cfg["numThreads"])

@@ -7,17 +7,11 @@ Builds multi-material domains from imported GDS layout layers.
 Run from the repository root:
 
 ```bash
-cd docs/examples/GDSReader && uv run python GDSReader.py -D 3 config.txt
+cd docs/examples/GDSReader && uv run python GDSReader.py -D 3
 ```
 
 ```python
 --8<-- "examples/GDSReader/GDSReader.py"
-```
-
-### Configuration
-
-```text
---8<-- "examples/GDSReader/config.txt"
 ```
 
 ## 2D

@@ -7,7 +7,6 @@ import lsmesh
 
 parser = ArgumentParser(description="Build a multi-material domain from GDS.")
 parser.add_argument("-D", "-DIM", dest="dim", type=int, default=3)
-parser.add_argument("filename")
 args = parser.parse_args()
 if args.dim != 3:
     raise ValueError("GDS Reader only supports 3D generation")
@@ -63,5 +62,4 @@ layer5 = mask.layerToLevelSet(5, 0.0, 0.2, True)
 geometry.insertNextLevelSetAsMaterial(layer5, ps.Material.PolySi)
 
 lsmesh.mesh(geometry, "mesh.vtu", dimension=args.dim)
-
 

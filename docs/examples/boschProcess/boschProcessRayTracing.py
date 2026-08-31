@@ -3,7 +3,7 @@
 # Replicates the results from:
 #   Ertl and Selberherr https://doi.org/10.1016/j.mee.2009.05.011
 # Execute:
-#   python boschProcessRayTracing.py -D 3 configBoschRayTracing.txt
+#   python boschProcessRayTracing.py -D 3
 #####################################################################
 
 from argparse import ArgumentParser
@@ -18,14 +18,41 @@ parser = ArgumentParser(
     description="Run a Bosch process on a trench geometry.",
 )
 parser.add_argument("-D", "-DIM", dest="dim", type=int, default=3)
-parser.add_argument("filename")
 args = parser.parse_args()
 if args.dim != 3:
     raise ValueError("Bosch Ray Tracing only supports 3D generation")
 
 ps.setDimension(args.dim)
 useGPU = ps.gpuAvailable()
-params = ps.readConfigFile(args.filename)
+params = {
+    "holeShape": "Half",
+    "gridDelta": 0.025,
+    "xExtent": 3.5,
+    "yExtent": 3.5,
+    "holeRadius": 1.0,
+    "maskHeight": 0.6,
+    "taperAngle": 0.0,
+    "ionSourceExponent": 1000,
+    "numCycles": 10,
+    "stickingDep": 0.1,
+    "Flux_ionD": 3.125e15,
+    "Flux_neuD": 2.0e18,
+    "alphaDep": 10.0,
+    "betaDep": 0.5,
+    "depTime": 5,
+    "stickingEtchPoly": 0.1,
+    "stickingEtchMask": 0.2,
+    "stickingEtchSubs": 0.2,
+    "Flux_ionE": 4.375e15,
+    "Flux_neuE": 1.0e19,
+    "alphaPoly": -125,
+    "alphaSubs": -270,
+    "alphaMask": -13.5,
+    "betaPoly": -0.03,
+    "betaSubs": -0.9,
+    "betaMask": -0.045,
+    "etchTime": 11,
+}
 
 # print only error output surfaces during the process
 ps.Logger.setLogLevel(ps.LogLevel.ERROR)
@@ -154,6 +181,4 @@ for i in range(numCycles):
     etchProcess.apply()
 
 lsmesh.mesh(geometry, "mesh.vtu", dimension=args.dim)
-
-
 

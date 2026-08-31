@@ -7,15 +7,9 @@ Temporal-scheme reference etching process.
 Run from the repository root:
 
 ```bash
-cd docs/examples/simpleEtching && uv run python simpleEtching.py -D 3 config.txt
+cd docs/examples/simpleEtching && uv run python simpleEtching.py -D 3
 ```
 
 ```python
 --8<-- "examples/simpleEtching/simpleEtching.py"
-```
-
-### Configuration
-
-```text
---8<-- "examples/simpleEtching/config.txt"
 ```

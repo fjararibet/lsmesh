@@ -7,7 +7,6 @@ import lsmesh
 
 parser = ArgumentParser(description="Run the simple etching example.")
 parser.add_argument("-D", "-DIM", dest="dim", type=int, default=3)
-parser.add_argument("filename")
 args = parser.parse_args()
 ps.setDimension(args.dim)
 ps.Logger.setLogLevel(ps.LogLevel.INFO)
@@ -73,6 +72,5 @@ def main():
 
 if __name__ == "__main__":
     lsmesh.mesh(main(), "mesh.vtu", dimension=args.dim)
-
 
 

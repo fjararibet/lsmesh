@@ -10,7 +10,6 @@ parser = ArgumentParser(
     description="Run an IBE process on a trench geometry.",
 )
 parser.add_argument("-D", "-DIM", dest="dim", type=int, default=2)
-parser.add_argument("filename")
 args = parser.parse_args()
 
 # switch between 2D and 3D mode
@@ -20,7 +19,22 @@ else:
     print("Running 3D simulation.")
 ps.setDimension(args.dim)
 
-params = ps.readConfigFile(args.filename)
+params = {
+    "gridDelta": 0.1,
+    "xExtent": 10,
+    "yExtent": 1,
+    "trenchWidth": 5,
+    "maskHeight": 1,
+    "trenchDepth": 1,
+    "meanEnergy": 100,
+    "sigmaEnergy": 10,
+    "thresholdEnergy": 10,
+    "exponent": 100,
+    "redepositionRate": 0.05,
+    "planeWaferRate": 1.0,
+    "angle": 35.0,
+    "processTime": 2,
+}
 
 geometry = ps.Domain(
     gridDelta=params["gridDelta"],
@@ -70,6 +84,5 @@ process.setParameters(advParams)
 process.apply()
 
 lsmesh.mesh(geometry, "mesh.vtu", dimension=args.dim)
-
 
 

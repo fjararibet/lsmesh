@@ -1,6 +1,7 @@
+from argparse import ArgumentParser
+
 import numpy as np
 import matplotlib.pyplot as plt
-import sys
 
 def visualize2d(rates_file, offset, x_extent, trench_width):
     data = np.loadtxt(rates_file, delimiter=",", skiprows=1)
@@ -67,45 +68,12 @@ def visualize3d(rates_file, offset_x, offset_y, radius, x_extent, y_extent):
     plt.savefig("domain3d.png", dpi=300)
     print("Saved 3D rate profile plot as 'domain3d.png'")
 
-def parse_config(filename):
-    config = {}
-    with open(filename) as f:
-        for line in f:
-            line = line.strip()
-            if not line or line.startswith("#"):
-                continue
-            if "=" in line:
-                key, val = line.split("=", 1)
-                config[key.strip()] = val.strip()
-    return config
-
-
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print("Usage: python visualization.py <config.txt>")
-        sys.exit(1)
+    parser = ArgumentParser(description="Visualize the sputter deposition rates.")
+    parser.add_argument("-D", dest="dim", type=int, choices=(2, 3), default=2)
+    args = parser.parse_args()
 
-    config = parse_config(sys.argv[1])
-
-    try:
-        if "offsetY" in config:
-            # 3D
-            visualize3d(
-                rates_file=config["ratesFile"],
-                offset_x=float(config["offsetX"]),
-                offset_y=float(config["offsetY"]),
-                radius=float(config["holeRadius"]),
-                x_extent=float(config["xExtent"]),
-                y_extent=float(config["yExtent"]),
-            )
-        else:
-            # 2D
-            visualize2d(
-                rates_file=config["ratesFile"],
-                offset=float(config["offsetX"]),
-                x_extent=float(config["xExtent"]),
-                trench_width=float(config["trenchWidth"]),
-            )
-    except Exception as e:
-        print(f"Error during visualization: {e}")
-        sys.exit(1)
+    if args.dim == 3:
+        visualize3d("rates3D.csv", 12.0, 15.0, 2.0, 15.0, 15.0)
+    else:
+        visualize2d("rates2D.csv", 10.0, 3.5, 1.0)
