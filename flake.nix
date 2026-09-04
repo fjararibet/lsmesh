@@ -57,6 +57,8 @@
             config.allowUnfree = true;
           };
           runtimeLibs = with pkgs; [
+            stdenv.cc.cc.lib
+            zlib
             libx11
             libxext
             libxrender
