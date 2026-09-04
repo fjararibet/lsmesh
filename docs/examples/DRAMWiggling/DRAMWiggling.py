@@ -1,8 +1,6 @@
 import viennaps as ps
 from argparse import ArgumentParser
 
-import lsmesh
-
 
 # parse config file name and simulation dimension
 parser = ArgumentParser(
@@ -93,7 +91,3 @@ numSteps = int(params["numSteps"])
 for i in range(numSteps):
     # run the process
     process.apply()
-
-lsmesh.mesh(geometry, "mesh.vtu", dimension=args.dim)
-
-

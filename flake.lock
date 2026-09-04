@@ -1,5 +1,22 @@
 {
   "nodes": {
+    "cpm-cmake": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1747587767,
+        "narHash": "sha256-IA13qA/b+owlrqbVAkhd4rS98/XB5RNONiJaPwjDm+A=",
+        "owner": "cpm-cmake",
+        "repo": "CPM.cmake",
+        "rev": "d9364ce284d92f4e18a96a7ca27e2c5deecf6700",
+        "type": "github"
+      },
+      "original": {
+        "owner": "cpm-cmake",
+        "ref": "v0.42.0",
+        "repo": "CPM.cmake",
+        "type": "github"
+      }
+    },
     "nixpkgs": {
       "locked": {
         "lastModified": 1780243769,
@@ -16,9 +33,153 @@
         "type": "github"
       }
     },
+    "package-project": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1734895517,
+        "narHash": "sha256-RbqywBm+C1Bo1KeFL2MdsE2PMKWbc3x2iWswKGXtO9o=",
+        "owner": "TheLartians",
+        "repo": "PackageProject.cmake",
+        "rev": "738d2ed9dba67e01ac2ea2a6d0f8d35c198fed32",
+        "type": "github"
+      },
+      "original": {
+        "owner": "TheLartians",
+        "ref": "v1.13.0",
+        "repo": "PackageProject.cmake",
+        "type": "github"
+      }
+    },
+    "pybind11-source": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1755892629,
+        "narHash": "sha256-ZiwNGsE1FOkhnWv/1ib1akhQ4FZvrXRCDnnBZoPp6r4=",
+        "owner": "pybind",
+        "repo": "pybind11",
+        "rev": "f5fbe867d2d26e4a0a9177a51f6e568868ad3dc8",
+        "type": "github"
+      },
+      "original": {
+        "owner": "pybind",
+        "ref": "v3.0.1",
+        "repo": "pybind11",
+        "type": "github"
+      }
+    },
     "root": {
       "inputs": {
-        "nixpkgs": "nixpkgs"
+        "cpm-cmake": "cpm-cmake",
+        "nixpkgs": "nixpkgs",
+        "package-project": "package-project",
+        "pybind11-source": "pybind11-source",
+        "viennacore": "viennacore",
+        "viennacs": "viennacs",
+        "viennahrle": "viennahrle",
+        "viennals": "viennals",
+        "viennaps": "viennaps",
+        "viennaray": "viennaray"
+      }
+    },
+    "viennacore": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1779351066,
+        "narHash": "sha256-kOlD0ej4VRtGTNSlSbXh2JiFtYx/+0K7U3bJUmANWVg=",
+        "owner": "ViennaTools",
+        "repo": "ViennaCore",
+        "rev": "640411618bef44717487f25ec7417b4f6daaabf7",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ViennaTools",
+        "ref": "v2.2.1",
+        "repo": "ViennaCore",
+        "type": "github"
+      }
+    },
+    "viennacs": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1786611694,
+        "narHash": "sha256-iAnybk6WbUMkgqyjJzDz1iK38CeqEmjnOLHUK6rZc0I=",
+        "owner": "ViennaTools",
+        "repo": "ViennaCS",
+        "rev": "aa73fc98a4f1f973940ee9dcb43b84d2dc0e1658",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ViennaTools",
+        "ref": "v2.1.2",
+        "repo": "ViennaCS",
+        "type": "github"
+      }
+    },
+    "viennahrle": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1777538842,
+        "narHash": "sha256-Q3T0OTq+5/u/QfSMNVKb/TfIXFspLZyf32sdrxfxXIg=",
+        "owner": "ViennaTools",
+        "repo": "ViennaHRLE",
+        "rev": "8aa4aa7ac4a72d101bee8a140dbf64e20963e305",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ViennaTools",
+        "ref": "v1.1.2",
+        "repo": "ViennaHRLE",
+        "type": "github"
+      }
+    },
+    "viennals": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1784574956,
+        "narHash": "sha256-8i6rJIkrnC+W+RKlmSRYD0CLM58Qu8jT1tQFrYr/4E4=",
+        "owner": "ViennaTools",
+        "repo": "ViennaLS",
+        "rev": "6f8cf622ae6ba8dc31f07107425041be7c95dbcd",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ViennaTools",
+        "ref": "v5.8.5",
+        "repo": "ViennaLS",
+        "type": "github"
+      }
+    },
+    "viennaps": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1787312084,
+        "narHash": "sha256-58JVE74AlySU6bkmSrGV0VSGlrNnFkb7t+tFM8BBdOY=",
+        "owner": "ViennaTools",
+        "repo": "ViennaPS",
+        "rev": "155e8597bc36fa86ef621de45668dbd3cd4c08a9",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ViennaTools",
+        "repo": "ViennaPS",
+        "type": "github"
+      }
+    },
+    "viennaray": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1780496615,
+        "narHash": "sha256-yThFK7ZALERm396fNox1w0XM1ZWdCvEkX1cd07wMBGo=",
+        "owner": "ViennaTools",
+        "repo": "ViennaRay",
+        "rev": "6cd664ceddebfa2ef67bda944e68886d880f889e",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ViennaTools",
+        "repo": "ViennaRay",
+        "rev": "6cd664ceddebfa2ef67bda944e68886d880f889e",
+        "type": "github"
       }
     }
   },
