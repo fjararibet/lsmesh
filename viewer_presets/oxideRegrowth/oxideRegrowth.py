@@ -12,7 +12,7 @@ args = parser.parse_args()
 
 import viennaps as ps
 
-from lsmesher import run_preset
+from lsmesh import run_preset
 
 
 # switch between 2D and 3D mode

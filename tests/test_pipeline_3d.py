@@ -5,9 +5,9 @@ import argparse
 import numpy as np
 import pytest
 
-from lsmesher import cli
-from lsmesher.geometry_types import Face, Point3D, Region3D
-from lsmesher.pipeline_3d import (
+from lsmesh import cli
+from lsmesh.geometry_types import Face, Point3D, Region3D
+from lsmesh.pipeline_3d import (
     DecimationOptions3D,
     _area_weighted_targets,
     _component_region_point,
@@ -25,7 +25,7 @@ from lsmesher.pipeline_3d import (
     surface_3d_to_off_text,
     surface_3d_to_poly_text,
 )
-from lsmesher.pipeline_types import Surface3D
+from lsmesh.pipeline_types import Surface3D
 
 
 def sample_surface(offset: float = 0.0) -> Surface3D:
@@ -569,7 +569,7 @@ def test_upper_region_sampling_selects_widest_deterministic_interval(monkeypatch
     def crossings(_triangles, x, _y):
         return (0.2,) if x < 1.0 else (1.0,)
 
-    monkeypatch.setattr("lsmesher.pipeline_3d._vertical_hits", crossings)
+    monkeypatch.setattr("lsmesh.pipeline_3d._vertical_hits", crossings)
 
     point = _component_region_point(
         surface.faces,

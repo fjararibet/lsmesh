@@ -2,7 +2,7 @@ from argparse import ArgumentParser
 import numpy as np
 import viennaps as ps
 
-from lsmesher import run_preset
+from lsmesh import run_preset
 
 # parse config file name and simulation dimension
 parser = ArgumentParser(

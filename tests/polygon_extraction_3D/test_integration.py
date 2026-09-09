@@ -5,11 +5,11 @@ Tests the full workflow from VTP files to 3D POLY output.
 
 import pytest
 
-from lsmesher import geometry_3d as geometry
-from lsmesher.geometry_types import Face, Point3D, Region3D
+from lsmesh import geometry_3d as geometry
+from lsmesh.geometry_types import Face, Point3D, Region3D
 
-# Import from the new lsmesher package
-from lsmesher.polygon_io_3d import (
+# Import from the new lsmesh package
+from lsmesh.polygon_io_3d import (
     read_vtp_faces,
     read_vtp_points,
     to_off_string,

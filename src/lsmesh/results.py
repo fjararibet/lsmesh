@@ -8,10 +8,10 @@ from typing import TYPE_CHECKING, Literal, TypeAlias
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from lsmesher.geometry_types import Face, Point3D
-    from lsmesher.pipeline_3d import DecimationReport
-    from lsmesher.pipeline_types import Geometry2D, Surface3D, TriangleMesh2D
-    from lsmesher.validation import ValidationReport
+    from lsmesh.geometry_types import Face, Point3D
+    from lsmesh.pipeline_3d import DecimationReport
+    from lsmesh.pipeline_types import Geometry2D, Surface3D, TriangleMesh2D
+    from lsmesh.validation import ValidationReport
 
 
 @dataclass(frozen=True)
@@ -165,7 +165,7 @@ class _MeshResultMixin:
 
     def write(self, output: str | Path) -> Path:
         """Write the generated mesh, or the geometry when meshing was disabled."""
-        from lsmesher.meshing import write  # noqa: PLC0415
+        from lsmesh.meshing import write  # noqa: PLC0415
 
         return write(self.mesh if self.mesh is not None else self.geometry, output)
 

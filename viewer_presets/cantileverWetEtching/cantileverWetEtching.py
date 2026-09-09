@@ -6,7 +6,7 @@ import viennaps.d3 as psd
 import viennals as ls
 from viennaps import BoundaryType, Material, AdvectionParameters, SpatialScheme
 
-from lsmesher import run_preset
+from lsmesh import run_preset
 
 
 parser = ArgumentParser(description="Run the cantilever wet etching example.")

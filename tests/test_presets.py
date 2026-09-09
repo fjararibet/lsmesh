@@ -4,8 +4,8 @@ import json
 from pathlib import Path
 from types import SimpleNamespace
 
-from lsmesher.presets import PRESET_REQUEST_ENV, run_preset
-from lsmesher.results import MaterialInfo
+from lsmesh.presets import PRESET_REQUEST_ENV, run_preset
+from lsmesh.results import MaterialInfo
 
 
 def test_run_preset_uses_request_options_and_writes_manifest(
@@ -47,7 +47,7 @@ def test_run_preset_uses_request_options_and_writes_manifest(
         )
 
     monkeypatch.setenv(PRESET_REQUEST_ENV, str(request_path))
-    monkeypatch.setattr("lsmesher.presets.mesh", fake_mesh)
+    monkeypatch.setattr("lsmesh.presets.mesh", fake_mesh)
     domain = object()
 
     run_preset(domain)  # type: ignore[arg-type]

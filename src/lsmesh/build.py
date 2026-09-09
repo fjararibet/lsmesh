@@ -1,6 +1,6 @@
 """Lower-level geometry construction operations."""
 
-from lsmesher.api import (
+from lsmesh.api import (
     BuildOptions,
     build_3d_from_files_with_report,
     build_3d_from_viennaps_with_report,

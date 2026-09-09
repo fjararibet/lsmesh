@@ -1,7 +1,7 @@
 # 3D Surface Merge Method
 
 This note documents the current 3D surface merge approach used in
-`src/lsmesher/pipeline_3d.py`.
+`src/lsmesh/pipeline_3d.py`.
 
 ## Goal
 

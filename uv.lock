@@ -637,6 +637,7 @@ name = "lsmesh"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "numpy" },
     { name = "pymeshlab" },
     { name = "scipy" },
     { name = "viennals" },
@@ -666,12 +667,13 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "numpy", specifier = ">=2" },
     { name = "plotly", marker = "extra == 'viewer'", specifier = ">=6.8.0" },
     { name = "pymeshlab", specifier = "~=2025.7" },
     { name = "pyvista", marker = "extra == 'viewer'", specifier = ">=0.48.4" },
     { name = "scipy", specifier = "~=1.16.3" },
     { name = "streamlit", marker = "extra == 'viewer'", specifier = ">=1.57.0" },
-    { name = "viennals", specifier = ">=5.7.post0" },
+    { name = "viennals", specifier = ">=5.7.3" },
     { name = "viennaps", specifier = ">=4.5.0" },
     { name = "vtk", specifier = "~=9.4.2" },
 ]

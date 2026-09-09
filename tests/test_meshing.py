@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 
 import lsmesh
-from lsmesher import (
+from lsmesh import (
     AutomaticMeshingError,
     Edge,
     Face,
@@ -21,15 +21,15 @@ from lsmesher import (
     validate,
     write,
 )
-from lsmesher.meshing import (
+from lsmesh.meshing import (
     _automatic_options,
     _decode_material_ids,
     _element_quality,
     _encode_material_ids,
     _normalize_source,
 )
-from lsmesher.pipeline_3d import DecimationReport
-from lsmesher.results import MaterialInfo, TetrahedralMesh3D
+from lsmesh.pipeline_3d import DecimationReport
+from lsmesh.results import MaterialInfo, TetrahedralMesh3D
 
 
 def square_2d() -> Geometry2D:
@@ -156,7 +156,7 @@ def test_automatic_mesh_retries_with_safer_surface_settings(tmp_path, monkeypatc
             ),
         )
 
-    monkeypatch.setattr("lsmesher.meshing._mesh_once", fake_mesh_once)
+    monkeypatch.setattr("lsmesh.meshing._mesh_once", fake_mesh_once)
 
     result = mesh(triangle_3d(), tmp_path / "mesh.vtu")
 
@@ -227,7 +227,7 @@ def test_automatic_failure_retains_attempt_reports(tmp_path, monkeypatch):
         message = "bad geometry"
         raise InvalidGeometryError(message)
 
-    monkeypatch.setattr("lsmesher.meshing._mesh_once", fail_mesh_once)
+    monkeypatch.setattr("lsmesh.meshing._mesh_once", fail_mesh_once)
 
     with pytest.raises(AutomaticMeshingError) as caught:
         mesh(triangle_3d(), tmp_path / "mesh.vtu")
@@ -264,9 +264,9 @@ def test_automatic_3d_viennaps_recovers_missing_materials_from_native_volume(
             output_paths=(output,),
         )
 
-    monkeypatch.setattr("lsmesher.meshing._mesh_once", fail_smooth_mesh)
+    monkeypatch.setattr("lsmesh.meshing._mesh_once", fail_smooth_mesh)
     monkeypatch.setattr(
-        "lsmesher.meshing._mesh_native_viennaps_volume", native_recovery
+        "lsmesh.meshing._mesh_native_viennaps_volume", native_recovery
     )
 
     result = mesh(Domain(), tmp_path / "mesh.vtu", dimension=3)  # type: ignore[arg-type]

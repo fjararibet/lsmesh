@@ -29,7 +29,7 @@ mask.addBlur(
 )
 
 # Load GDS file
-reader = ps.GDSReader(mask, "../../viewer_presets/GDSReader/myTest.gds")
+reader = ps.GDSReader(mask, "../../../viewer_presets/GDSReader/myTest.gds")
 reader.apply()
 
 # Export unblurred mask layer

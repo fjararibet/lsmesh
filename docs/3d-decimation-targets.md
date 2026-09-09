@@ -18,7 +18,7 @@ Use `target_total_faces` when output size and processing cost are the primary
 controls:
 
 ```python
-from lsmesher import BuildOptions, DecimationOptions3D
+from lsmesh import BuildOptions, DecimationOptions3D
 
 options = BuildOptions(
     decimation=DecimationOptions3D(target_total_faces=5_600),
@@ -45,7 +45,7 @@ The default is 5,600 unique decimatable faces.
 CLI equivalent:
 
 ```bash
-lsmesher mesh interfaces/*.vtp \
+lsmesh mesh interfaces/*.vtp \
   --decimate-target-total-faces 5600 \
   -o device.vtu
 ```
@@ -75,7 +75,7 @@ between patches.
 CLI equivalent:
 
 ```bash
-lsmesher mesh interfaces/*.vtp \
+lsmesh mesh interfaces/*.vtp \
   --decimate-target-edge-length 0.25 \
   -o device.vtu
 ```
@@ -95,7 +95,7 @@ achieved unique faces = protected faces + decimated remainder faces
 
 Each remainder target is also clamped to a conservative boundary floor when
 patch-boundary preservation is enabled. If PyMeshLab changes a fixed boundary
-or creates a fold edge, lsmesher retries with a less aggressive target. These
+or creates a fold edge, lsmesh retries with a less aggressive target. These
 safety mechanisms mean the achieved count can exceed the requested budget.
 
 Conformity and a valid TetGen piecewise-linear complex take priority over

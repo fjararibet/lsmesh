@@ -128,7 +128,7 @@ writes the mesh, or the boundary when meshing was disabled.
 
 ## Errors
 
-All package errors derive from `LsmesherError`:
+All package errors derive from `LsmeshError`:
 
 | Exception | Raised when |
 | --- | --- |

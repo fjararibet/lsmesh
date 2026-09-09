@@ -30,7 +30,7 @@ class TriangleBuildHook(BuildHookInterface):
     PLUGIN_NAME = "triangle-build"
 
     def initialize(self, version: str, build_data: dict) -> None:  # noqa: ARG002
-        """Compile Triangle and Show Me binaries and stage them into src/lsmesher/bin/."""
+        """Compile Triangle and Show Me binaries and stage them into src/lsmesh/bin/."""
         if self.target_name != "wheel":
             return
 
@@ -41,7 +41,7 @@ class TriangleBuildHook(BuildHookInterface):
 
         root = Path(self.root)
         vendor_dir = root / "vendor" / "triangle"
-        bin_dir = root / "src" / "lsmesher" / "bin"
+        bin_dir = root / "src" / "lsmesh" / "bin"
         bin_dir.mkdir(parents=True, exist_ok=True)
 
         cc = shutil.which("cc") or shutil.which("gcc")
@@ -54,6 +54,7 @@ class TriangleBuildHook(BuildHookInterface):
         triangle_output = bin_dir / "triangle"
         triangle_cmd = [
             cc,
+            "-std=gnu89",
             "-O2",
             "-DLINUX",
             "-o",
@@ -69,6 +70,7 @@ class TriangleBuildHook(BuildHookInterface):
         showme_output = bin_dir / "showme"
         showme_cmd = [
             cc,
+            "-std=gnu89",
             "-O2",
             "-DLINUX",
             "-I/usr/X11R6/include",
@@ -83,6 +85,6 @@ class TriangleBuildHook(BuildHookInterface):
 
         # Make sure hatchling includes the binaries in the wheel.
         build_data["force_include"] = {
-            str(triangle_output): "lsmesher/bin/triangle",
-            str(showme_output): "lsmesher/bin/showme",
+            str(triangle_output): "lsmesh/bin/triangle",
+            str(showme_output): "lsmesh/bin/showme",
         }

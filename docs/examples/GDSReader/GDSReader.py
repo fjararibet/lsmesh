@@ -28,7 +28,7 @@ boundaryConds = [
 mask = ps.GDSGeometry(gridDelta, boundaryConds)
 mask.addBlur([forwardSigma, backSigma], [0.8, 0.2], 0.5, exposureDelta)
 
-reader = ps.GDSReader(mask, "../../viewer_presets/GDSReader/myTest.gds")
+reader = ps.GDSReader(mask, "../../../viewer_presets/GDSReader/myTest.gds")
 reader.apply()
 
 # Prepare geometry

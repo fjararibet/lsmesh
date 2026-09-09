@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 from scipy.spatial import KDTree
 
-from lsmesher.geometry_types import (
+from lsmesh.geometry_types import (
     Edge,
     Face,
     Point2D,

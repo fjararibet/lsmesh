@@ -36,7 +36,7 @@ duplicate faces yields a complex for which `tetgen -d` reports
 
 ## Changes
 
-### Pipeline (`src/lsmesher/pipeline_3d.py`)
+### Pipeline (`src/lsmesh/pipeline_3d.py`)
 
 1. **Merge** (`merge_3d_surfaces`): replaced boundary-loop stitching with
    point deduplication plus duplicate-face dropping (the 2D
@@ -72,10 +72,10 @@ duplicate faces yields a complex for which `tetgen -d` reports
 
 - `vtp_to_poly_string` gained a `facets` parameter for multi-polygon facets
   and writes `Region3D` material IDs into region records
-  (`src/lsmesher/polygon_io_3d.py`).
+  (`src/lsmesh/polygon_io_3d.py`).
 - TetGen is invoked with `-pAkF` instead of `-pkF`; without `-A` the region
   records were silently ignored, so 3D materials never actually worked
-  (`src/lsmesher/cli.py`).
+  (`src/lsmesh/cli.py`).
 - The 3D VTU writer now names its cell array `Material` (capital M) to match
   the 2D writer; the Streamlit viewer only colormaps an array named
   `Material`, so 3D meshes previously rendered uncolored.
@@ -91,7 +91,7 @@ duplicate faces yields a complex for which `tetgen -d` reports
 
 ## Verified Result
 
-`lsmesher mesh viewer_presets/selectiveEpitaxy/interface_{0,1,2}.vtp -o mesh.vtp`:
+`lsmesh mesh viewer_presets/selectiveEpitaxy/interface_{0,1,2}.vtp -o mesh.vtp`:
 
 | | facets in | tets out | materials |
 |---|---|---|---|

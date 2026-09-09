@@ -1,4 +1,4 @@
-"""Interactive Streamlit/PyVista viewer for lsmesher outputs."""
+"""Interactive Streamlit/PyVista viewer for lsmesh outputs."""
 
 from __future__ import annotations
 
@@ -22,14 +22,14 @@ import pyvista as pv
 import streamlit as st
 from streamlit.web.cli import main as streamlit_main
 
-from lsmesher.cli import MesherOptions, detect_dimension
-from lsmesher.geometry_types import Face
-from lsmesher.pipeline_2d import build_2d_poly_geometry, read_2d_layers
-from lsmesher.pipeline_3d import DEFAULT_TARGET_TOTAL_FACES, DecimationOptions3D
-from lsmesher.polygon_io_2d import write_vtp as write_vtp_2d
+from lsmesh.cli import MesherOptions, detect_dimension
+from lsmesh.geometry_types import Face
+from lsmesh.pipeline_2d import build_2d_poly_geometry, read_2d_layers
+from lsmesh.pipeline_3d import DEFAULT_TARGET_TOTAL_FACES, DecimationOptions3D
+from lsmesh.polygon_io_2d import write_vtp as write_vtp_2d
 
 VIEWABLE_EXTENSIONS = (".vtp", ".vtu", ".vtk", ".off")
-PRESETS_DIR_ENV = "LSMESHER_VIEWER_PRESETS_DIR"
+PRESETS_DIR_ENV = "LSMESH_VIEWER_PRESETS_DIR"
 DEFAULT_MAX_WIREFRAME_EDGES = 50_000
 OUTPUT_DIR_NAME = "viewer_outputs"
 
@@ -300,7 +300,7 @@ def _load_preset(
         raise ValueError(message)
 
     workdir = _prepare_output_dir(
-        output_dir or Path(tempfile.mkdtemp(prefix="lsmesher-preset-"))
+        output_dir or Path(tempfile.mkdtemp(prefix="lsmesh-preset-"))
     )
     config_path = workdir / preset.config.name
     _write_config_with_values(preset.config, config_path, config_values or {})
@@ -369,8 +369,8 @@ def _run_sdk_preset(
         shutil.copy2(asset, workdir / asset.name)
     output_suffix = ".vtu" if options.run_mesher else ".vtp"
     output_path = workdir / f"mesh{output_suffix}"
-    manifest_path = workdir / "lsmesher-preset-result.json"
-    request_path = workdir / "lsmesher-preset-request.json"
+    manifest_path = workdir / "lsmesh-preset-result.json"
+    request_path = workdir / "lsmesh-preset-request.json"
     request = {
         "dimension": preset.dimension,
         "output_path": str(output_path),
@@ -394,7 +394,7 @@ def _run_sdk_preset(
     if env.get("PYTHONPATH"):
         python_paths.append(env["PYTHONPATH"])
     env["PYTHONPATH"] = os.pathsep.join(python_paths)
-    env["LSMESHER_PRESET_REQUEST"] = str(request_path)
+    env["LSMESH_PRESET_REQUEST"] = str(request_path)
     result = subprocess.run(
         [
             sys.executable,
@@ -582,7 +582,7 @@ _MESHES = [
 {listing}
 ]
 
-# Cell array holding material ids in ViennaPS/lsmesher volume meshes.
+# Cell array holding material ids in ViennaPS/lsmesh volume meshes.
 _MATERIAL_ARRAY = "Material"
 
 # White for mesh edges.
@@ -737,7 +737,7 @@ def _preset_data_zip(
         compression=zipfile.ZIP_DEFLATED,
     ) as archive:
         readme = f"Preset: {preset_name}\n\n"
-        readme += "meshed_output/: lsmesher SDK output and mesher sidecars\n"
+        readme += "meshed_output/: lsmesh SDK output and mesher sidecars\n"
         if raw_files:
             readme += "raw_files/: per-interface ViennaPS files\n"
         if original_files:
@@ -945,7 +945,7 @@ def _render_mesh(
 def _pyvista_screenshot(path: Path, *, options: PyVistaPngOptions) -> Path:
     """Render a mesh to a PNG with PyVista offscreen rendering."""
     mesh = cast("pv.DataSet", pv.read(path))
-    output_path = Path(tempfile.mkdtemp(prefix="lsmesher-pyvista-png-")) / "preview.png"
+    output_path = Path(tempfile.mkdtemp(prefix="lsmesh-pyvista-png-")) / "preview.png"
     plotter = pv.Plotter(
         off_screen=True,
         window_size=(options.width, options.height),
@@ -1011,7 +1011,7 @@ def _write_uploaded_files(uploaded_files: list, directory: Path) -> list[Path]:
 
 
 def _decimation_cli_flags(decimation: DecimationOptions3D) -> list[str]:
-    """Translate decimation options into `lsmesher mesh` CLI flags."""
+    """Translate decimation options into `lsmesh mesh` CLI flags."""
     if not decimation.enabled:
         return ["--no-decimate"]
     flags = [
@@ -1051,7 +1051,7 @@ def _decimation_cli_flags(decimation: DecimationOptions3D) -> list[str]:
 
 
 def _mesher_cli_flags(options: MesherOptions) -> list[str]:
-    """Translate mesher quality options into `lsmesher mesh` CLI flags."""
+    """Translate mesher quality options into `lsmesh mesh` CLI flags."""
     flags = [
         "--triangle-min-angle",
         str(options.triangle_min_angle),
@@ -1081,7 +1081,7 @@ def _run_pipeline(  # noqa: PLR0913
 ) -> Path:
     """Run the meshing pipeline in a subprocess and return the output path.
 
-    The pipeline runs via ``lsmesher mesh`` in a child process on purpose:
+    The pipeline runs via ``lsmesh mesh`` in a child process on purpose:
     pymeshlab's bundled Qt runtime binds thread-local state to whichever
     thread first loads it, and Streamlit script threads are short-lived, so
     running it in the viewer process corrupts the heap and eventually aborts
@@ -1092,14 +1092,14 @@ def _run_pipeline(  # noqa: PLR0913
     suffix = f".{output_format}"
     output_path = (
         output_path
-        or Path(tempfile.mkdtemp(prefix="lsmesher-viewer-")) / f"mesh{suffix}"
+        or Path(tempfile.mkdtemp(prefix="lsmesh-viewer-")) / f"mesh{suffix}"
     )
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     command = [
         sys.executable,
         "-m",
-        "lsmesher.cli",
+        "lsmesh.cli",
         "mesh",
         *[str(path) for path in input_paths],
         "--epsilon",
@@ -1149,7 +1149,7 @@ def _run_2d_polygon_preview(
     )
     output_path = (
         output_path
-        or Path(tempfile.mkdtemp(prefix="lsmesher-polygon-")) / "polygon.vtp"
+        or Path(tempfile.mkdtemp(prefix="lsmesh-polygon-")) / "polygon.vtp"
     )
     output_path.parent.mkdir(parents=True, exist_ok=True)
     write_vtp_2d(
@@ -1750,7 +1750,7 @@ def _decimation_sidebar_controls(defaults: DecimationOptions3D) -> DecimationOpt
 
 def app() -> None:  # noqa: C901, PLR0912, PLR0915
     """Render the Streamlit application."""
-    st.set_page_config(page_title="lsmesher live viewer", layout="wide")
+    st.set_page_config(page_title="lsmesh live viewer", layout="wide")
 
     root = Path.cwd()
     st.session_state.setdefault("preset_paths", [])

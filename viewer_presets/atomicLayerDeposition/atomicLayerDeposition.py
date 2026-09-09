@@ -3,7 +3,7 @@ from argparse import ArgumentParser
 import viennaps as ps
 import viennals as ls
 
-from lsmesher import run_preset
+from lsmesh import run_preset
 
 
 parser = ArgumentParser(description="Run atomic layer deposition.")

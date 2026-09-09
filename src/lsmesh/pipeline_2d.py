@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import random
+from bisect import bisect_right
 from itertools import pairwise
 from typing import TYPE_CHECKING, Protocol
 
-from lsmesher import geometry_2d as geometry2d
-from lsmesher.geometry_types import Edge, Point2D
-from lsmesher.pipeline_types import Geometry2D, Layer2D
-from lsmesher.polygon_io_2d import (
+from lsmesh import geometry_2d as geometry2d
+from lsmesh.geometry_types import Edge, Point2D
+from lsmesh.pipeline_types import Geometry2D, Layer2D
+from lsmesh.polygon_io_2d import (
     read_vtp_edges,
     read_vtp_points,
     vtp_to_poly_string,
@@ -185,6 +186,46 @@ def collect_2d_attributes(
     return tuple(attributes)
 
 
+def _crossing_sweep(
+    points: Sequence[Point2D],
+    edges: Sequence[Edge],
+    heights: Sequence[float],
+) -> list[list[float]]:
+    """Return sorted x-crossings of a polygon for each increasing scan height.
+
+    Scan heights never coincide with vertex heights, so an edge crosses the
+    scan line exactly when the height lies strictly inside its y-span. The
+    crossing uses the same float expression as
+    :func:`lsmesh.geometry_2d.point_in_polygon` so parity checks stay
+    bit-identical.
+    """
+    spans: list[tuple[float, float, Point2D, Point2D]] = []
+    for edge in edges:
+        start = points[edge.start]
+        end = points[edge.end]
+        low = min(start.y, end.y)
+        high = max(start.y, end.y)
+        if high > low:
+            spans.append((low, high, start, end))
+    spans.sort(key=lambda span: span[0])
+    crossings: list[list[float]] = []
+    active: list[tuple[float, float, Point2D, Point2D]] = []
+    next_span = 0
+    for y in heights:
+        while next_span < len(spans) and spans[next_span][0] < y:
+            active.append(spans[next_span])
+            next_span += 1
+        active = [span for span in active if span[1] > y]
+        result: list[float] = []
+        for _low, _high, start, end in active:
+            if (start.y > y) == (end.y > y):
+                continue
+            result.append(start.x + (end.x - start.x) * (y - start.y) / (end.y - start.y))
+        result.sort()
+        crossings.append(result)
+    return crossings
+
+
 def _region_seed_candidates(  # noqa: C901, PLR0912
     layer: Layer2D,
     previous: Layer2D | None,
@@ -201,43 +242,47 @@ def _region_seed_candidates(  # noqa: C901, PLR0912
     comparison = previous if previous is not None and not originally_closed else None
     all_points = (*layer.points, *(comparison.points if comparison is not None else ()))
     y_values = sorted({point.y for point in all_points})
-    bands: list[list[tuple[float, float, Point2D]]] = []
+    bands: list[tuple[float, list[tuple[float, float, Point2D]]]] = []
 
-    def intersections(candidate_layer: Layer2D, y: float) -> list[float]:
-        result: list[float] = []
-        for edge in candidate_layer.edges:
-            start = candidate_layer.points[edge.start]
-            end = candidate_layer.points[edge.end]
-            if (start.y > y) == (end.y > y):
-                continue
-            result.append(start.x + (end.x - start.x) * (y - start.y) / (end.y - start.y))
-        return result
+    band_heights = [
+        (lower + upper) / 2 for lower, upper in pairwise(y_values) if upper > lower
+    ]
+    layer_crossings = _crossing_sweep(layer.points, layer.edges, band_heights)
+    comparison_crossings = (
+        _crossing_sweep(comparison.points, comparison.edges, band_heights)
+        if comparison is not None
+        else None
+    )
 
-    for lower, upper in pairwise(y_values):
-        if upper <= lower:
-            continue
-        y = (lower + upper) / 2
-        x_values = intersections(layer, y)
-        if comparison is not None:
-            x_values.extend(intersections(comparison, y))
+    for band_index, y in enumerate(band_heights):
+        layer_xs = layer_crossings[band_index]
+        comparison_xs = (
+            comparison_crossings[band_index] if comparison_crossings is not None else None
+        )
+        x_values = list(layer_xs)
+        if comparison_xs is not None:
+            x_values.extend(comparison_xs)
         unique_x = sorted(set(x_values))
         band: list[tuple[float, float, Point2D]] = []
         for left, right in pairwise(unique_x):
             if right <= left:
                 continue
             point = Point2D((left + right) / 2, y)
-            if not geometry2d.point_in_polygon(point, layer.points, layer.edges):
+            # Parity of crossings right of the midpoint matches
+            # point_in_polygon ray casting without the per-candidate scan.
+            inside_layer = (len(layer_xs) - bisect_right(layer_xs, point.x)) % 2 == 1
+            if not inside_layer:
                 continue
-            if comparison is not None and geometry2d.point_in_polygon(
-                point, comparison.points, comparison.edges
-            ):
+            if comparison_xs is not None and (
+                len(comparison_xs) - bisect_right(comparison_xs, point.x)
+            ) % 2 == 1:
                 continue
             band.append((left, right, point))
         # Keep empty bands: they are topological gaps and must prevent the
         # union step below from joining components across empty space.
-        bands.append(band)
+        bands.append((y, band))
 
-    intervals = [interval for band in bands for interval in band]
+    intervals = [interval for _y, band in bands for interval in band]
     if not intervals:
         return ()
     indices = {id(interval): index for index, interval in enumerate(intervals)}
@@ -254,11 +299,27 @@ def _region_seed_candidates(  # noqa: C901, PLR0912
         if first_root != second_root:
             parents[second_root] = first_root
 
-    for previous_band, current_band in pairwise(bands):
-        for first in previous_band:
-            for second in current_band:
-                if min(first[1], second[1]) > max(first[0], second[0]):
-                    union(indices[id(first)], indices[id(second)])
+    def union_overlapping(
+        previous_band: Sequence[tuple[float, float, Point2D]],
+        current_band: Sequence[tuple[float, float, Point2D]],
+    ) -> None:
+        # Interval lists are disjoint and sorted, so a two-pointer sweep finds
+        # every overlapping pair without the quadratic cross product.
+        first = second = 0
+        while first < len(previous_band) and second < len(current_band):
+            left_interval = previous_band[first]
+            right_interval = current_band[second]
+            if min(left_interval[1], right_interval[1]) > max(
+                left_interval[0], right_interval[0]
+            ):
+                union(indices[id(left_interval)], indices[id(right_interval)])
+            if left_interval[1] < right_interval[1]:
+                first += 1
+            else:
+                second += 1
+
+    for (_y, previous_band), (_y2, current_band) in pairwise(bands):
+        union_overlapping(previous_band, current_band)
 
     widest_by_component: dict[int, tuple[float, Point2D]] = {}
     for index, (left, right, point) in enumerate(intervals):

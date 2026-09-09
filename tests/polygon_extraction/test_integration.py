@@ -5,11 +5,11 @@ Tests the full workflow from VTP files to POLY output.
 
 import pytest
 
-from lsmesher import geometry_2d as geometry
-from lsmesher.geometry_types import Edge, Face, Point2D
+from lsmesh import geometry_2d as geometry
+from lsmesh.geometry_types import Edge, Face, Point2D
 
-# Import from the new lsmesher package
-from lsmesher.polygon_io_2d import (
+# Import from the new lsmesh package
+from lsmesh.polygon_io_2d import (
     read_vtp_edges,
     read_vtp_points,
     to_off_string,

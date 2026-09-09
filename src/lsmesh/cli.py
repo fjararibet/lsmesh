@@ -1,4 +1,4 @@
-"""CLI module for lsmesher."""
+"""CLI module for lsmesh."""
 
 import argparse
 import os
@@ -9,19 +9,19 @@ from typing import Literal, Protocol
 
 import vtk
 
-from lsmesher._bin import SHOWME, TRIANGLE
-from lsmesher.api import BuildOptions
-from lsmesher.errors import LsmesherError
-from lsmesher.meshing import (
+from lsmesh._bin import SHOWME, TRIANGLE
+from lsmesh.api import BuildOptions
+from lsmesh.errors import LsmeshError
+from lsmesh.meshing import (
     MesherOptions as SdkMesherOptions,
 )
-from lsmesher.meshing import (
+from lsmesh.meshing import (
     MeshingOptions,
 )
-from lsmesher.meshing import (
+from lsmesh.meshing import (
     mesh as mesh_geometry,
 )
-from lsmesher.pipeline_3d import (
+from lsmesh.pipeline_3d import (
     DEFAULT_TARGET_TOTAL_FACES,
     DecimationOptions3D,
 )
@@ -541,8 +541,8 @@ def main() -> None:  # noqa: PLR0915
                 run_2d(args)
             else:
                 run_3d(args)
-        except LsmesherError as error:
-            parser.exit(2, f"lsmesher: error: {error}\n")
+        except LsmeshError as error:
+            parser.exit(2, f"lsmesh: error: {error}\n")
     elif args.command == "triangle":
         run_triangle(args)
     elif args.command == "showme":

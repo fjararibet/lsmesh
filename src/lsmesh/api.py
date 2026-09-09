@@ -5,16 +5,16 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Literal, Protocol, TypeAlias, cast, overload
 
-from lsmesher.errors import DependencyError
-from lsmesher.geometry_types import Edge, Face, Point2D, Point3D
-from lsmesher.pipeline_2d import (
+from lsmesh.errors import DependencyError
+from lsmesh.geometry_types import Edge, Face, Point2D, Point3D
+from lsmesh.pipeline_2d import (
     AttributeSampler2D,
     build_2d_poly_geometry,
     default_2d_attribute_sampler,
     read_2d_layers,
     seeded_2d_attribute_sampler,
 )
-from lsmesher.pipeline_3d import (
+from lsmesh.pipeline_3d import (
     BOTTOM_MARGIN,
     SEAM_PROTECTION_RINGS,
     DecimationOptions3D,
@@ -23,14 +23,14 @@ from lsmesher.pipeline_3d import (
     build_3d_surface_with_report,
     read_3d_surfaces,
 )
-from lsmesher.pipeline_types import Geometry2D, Layer2D, Surface3D
+from lsmesh.pipeline_types import Geometry2D, Layer2D, Surface3D
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
     from pathlib import Path
     from typing import Any
 
-    from lsmesher.results import MaterialInfo
+    from lsmesh.results import MaterialInfo
 
 Dimension: TypeAlias = Literal[2, 3]
 BuiltGeometry: TypeAlias = Geometry2D | Surface3D
@@ -47,7 +47,7 @@ class ViennaLSMesh(Protocol):
 
 
 class ViennaPSDomain(Protocol):
-    """Minimal part of ``viennaps.Domain`` consumed by lsmesher."""
+    """Minimal part of ``viennaps.Domain`` consumed by lsmesh."""
 
     def getLevelSets(self) -> Sequence[object]: ...  # noqa: N802
 
@@ -132,7 +132,7 @@ def _viennals_meshes(
 
 def materials_from_viennaps(domain: ViennaPSDomain) -> tuple[MaterialInfo, ...]:
     """Return the ViennaPS material corresponding to each 1-based region."""
-    from lsmesher.results import MaterialInfo  # noqa: PLC0415
+    from lsmesh.results import MaterialInfo  # noqa: PLC0415
 
     material_map = domain.getMaterialMap()
     return tuple(

@@ -19,7 +19,7 @@ can produce invalid facets or ambiguous volumes.
 
 ## Patch Definition
 
-Patch construction happens in `src/lsmesher/pipeline_3d.py`:
+Patch construction happens in `src/lsmesh/pipeline_3d.py`:
 
 - `_patch_groups(...)`
 - `_connected_keys(...)`

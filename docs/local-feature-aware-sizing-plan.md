@@ -31,7 +31,7 @@ physics/error-driven adaptation are out of scope.
 
 At a point `x`, the geometric local feature size is approximated by the distance
 to the nearest non-incident surface feature that must remain distinguishable.
-For lsmesher this primarily means:
+For lsmesh this primarily means:
 
 - the thickness between adjacent material interfaces;
 - the separation between approaching sheets near pinch-off;
@@ -242,7 +242,7 @@ assuming the conversion was exact.
 
 Do not use `-Y` as the normal implementation: preventing boundary splitting can
 conflict with quality refinement and leave poor tetrahedra. Boundary preservation
-is appropriate only when lsmesher has already created a sufficiently regular,
+is appropriate only when lsmesh has already created a sufficiently regular,
 fully sized boundary mesh.
 
 ## Automatic Policy Integration

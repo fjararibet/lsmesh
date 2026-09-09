@@ -14,8 +14,8 @@ from typing import Literal, TypeAlias, cast, overload
 
 import numpy as np
 
-from lsmesher._bin import TRIANGLE
-from lsmesher.api import (
+from lsmesh._bin import TRIANGLE
+from lsmesh.api import (
     BuildOptions,
     Dimension,
     ViennaPSDomain,
@@ -25,47 +25,47 @@ from lsmesher.api import (
     build_from_viennaps,
     materials_from_viennaps,
 )
-from lsmesher.errors import (
+from lsmesh.errors import (
     AutomaticMeshingError,
     InvalidGeometryError,
-    LsmesherError,
+    LsmeshError,
     MesherNotFoundError,
     TetGenError,
     TriangleError,
     UnsupportedSourceError,
 )
-from lsmesher.geometry_types import Face, Point3D, Region3D
-from lsmesher.pipeline_2d import geometry_2d_to_poly_text, read_2d_layers
-from lsmesher.pipeline_3d import (
+from lsmesh.geometry_types import Face, Point3D, Region3D
+from lsmesh.pipeline_2d import geometry_2d_to_poly_text, read_2d_layers
+from lsmesh.pipeline_3d import (
     DecimationOptions3D,
     DecimationReport,
     read_3d_surfaces,
     surface_3d_to_off_text,
     surface_3d_to_poly_text,
 )
-from lsmesher.pipeline_types import Geometry2D, Surface3D, TriangleMesh2D
-from lsmesher.polygon_io_2d import (
+from lsmesh.pipeline_types import Geometry2D, Surface3D, TriangleMesh2D
+from lsmesh.polygon_io_2d import (
     read_triangle_mesh,
 )
-from lsmesher.polygon_io_2d import (
+from lsmesh.polygon_io_2d import (
     to_off_string as to_off_string_2d,
 )
-from lsmesher.polygon_io_2d import (
+from lsmesh.polygon_io_2d import (
     write_vtp as write_vtp_2d,
 )
-from lsmesher.polygon_io_2d import (
+from lsmesh.polygon_io_2d import (
     write_vtu as write_vtu_2d,
 )
-from lsmesher.polygon_io_3d import (
+from lsmesh.polygon_io_3d import (
     read_tetgen_mesh,
 )
-from lsmesher.polygon_io_3d import (
+from lsmesh.polygon_io_3d import (
     write_vtp as write_vtp_3d,
 )
-from lsmesher.polygon_io_3d import (
+from lsmesh.polygon_io_3d import (
     write_vtu as write_vtu_3d,
 )
-from lsmesher.results import (
+from lsmesh.results import (
     AutomaticMeshReport,
     MaterialInfo,
     MeshAttemptReport,
@@ -74,7 +74,7 @@ from lsmesher.results import (
     MeshResult3D,
     TetrahedralMesh3D,
 )
-from lsmesher.validation import ValidationReport, validate
+from lsmesh.validation import ValidationReport, validate
 
 OutputFormat: TypeAlias = Literal["poly", "off", "vtp", "vtu"]
 MeshQuality: TypeAlias = Literal["fast", "balanced", "accurate"]
@@ -244,7 +244,7 @@ def mesh(
     Raises:
         ValueError: If arguments conflict or dimension/quality is invalid.
         UnsupportedSourceError: If ``source`` is not a supported value.
-        LsmesherError: If conversion, validation, or meshing fails.
+        LsmeshError: If conversion, validation, or meshing fails.
     """
     normalized_source = _normalize_source(source)
     resolved_dimension = _resolve_dimension(normalized_source, dimension)
@@ -253,7 +253,7 @@ def mesh(
         raise ValueError(msg)
     selected_quality = quality or "balanced"
     if output is None:
-        with tempfile.TemporaryDirectory(prefix="lsmesher-result-") as directory:
+        with tempfile.TemporaryDirectory(prefix="lsmesh-result-") as directory:
             temporary_output = Path(directory) / (
                 "mesh.poly"
                 if options is not None
@@ -602,7 +602,7 @@ def _mesh_automatically(
                 target_met=quality_target_met,
                 final=attempt_index == len(option_attempts) - 1,
             )
-        except LsmesherError as error:
+        except LsmeshError as error:
             attempts.append(
                 _attempt_report(name, options, success=False, error=str(error))
             )
@@ -641,7 +641,7 @@ def _mesh_automatically(
                 )
             )
             _raise_for_quality(result.quality)
-        except LsmesherError as error:
+        except LsmeshError as error:
             attempts.append(
                 _attempt_report(
                     recovery_name,
@@ -725,7 +725,7 @@ def _mesh_native_viennaps_volume(
 
     import vtk  # noqa: PLC0415
 
-    with tempfile.TemporaryDirectory(prefix="lsmesher-viennaps-volume-") as directory:
+    with tempfile.TemporaryDirectory(prefix="lsmesh-viennaps-volume-") as directory:
         prefix = Path(directory) / "mesh"
         try:
             save_volume_mesh(str(prefix))
@@ -977,7 +977,7 @@ def _mesh_2d(
         )
         raise ValueError(msg)
 
-    with tempfile.TemporaryDirectory(prefix="lsmesher-") as directory:
+    with tempfile.TemporaryDirectory(prefix="lsmesh-") as directory:
         poly_path = Path(directory) / "mesh.poly"
         original_ids = geometry.attribute_ids or tuple(
             range(1, len(geometry.attributes) + 1)
@@ -1050,7 +1050,7 @@ def _mesh_3d(  # noqa: PLR0913
     if executable is None:
         mesher_name = "tetgen"
         raise MesherNotFoundError(mesher_name)
-    with tempfile.TemporaryDirectory(prefix="lsmesher-") as directory:
+    with tempfile.TemporaryDirectory(prefix="lsmesh-") as directory:
         poly_path = Path(directory) / "mesh.poly"
         encoded_ids, original_by_encoded = _encode_material_ids(
             tuple(region.material for region in geometry.regions)

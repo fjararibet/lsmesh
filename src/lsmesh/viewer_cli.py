@@ -14,11 +14,11 @@ def main() -> None:
     if missing:
         packages = ", ".join(missing)
         message = (
-            f"The lsmesher viewer requires the 'viewer' extra ({packages} missing).\n"
-            'Install it with: uv add "lsmesher[viewer]"'
+            f"The lsmesh viewer requires the 'viewer' extra ({packages} missing).\n"
+            'Install it with: uv add "lsmesh[viewer]"'
         )
         raise SystemExit(message)
 
-    from lsmesher.viewer import main as viewer_main  # noqa: PLC0415
+    from lsmesh.viewer import main as viewer_main  # noqa: PLC0415
 
     viewer_main()

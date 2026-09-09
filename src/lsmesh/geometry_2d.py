@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import random
-from collections import defaultdict
+from collections import defaultdict, deque
+from math import floor
 from typing import TYPE_CHECKING, Protocol, cast
 
-from lsmesher.geometry_types import Edge, Point2D
+from lsmesh.geometry_types import Edge, Point2D
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -31,40 +32,67 @@ def remove_collinear(
     """Remove collinear points from a polygon."""
     if len(edges) < 2:
         return list(points), list(edges)
-    done = False
     candidate_edges = {edge.sorted().as_tuple() for edge in edges}
-    while not done:
-        done = True
-        adjacency: dict[int, list[int]] = {i: [] for i in range(len(points))}
-        for i, j in candidate_edges:
-            adjacency[i].append(j)
-            adjacency[j].append(i)
-        for i, j in list(candidate_edges):
-            # Only collapse vertices in the interior of a simple polyline.
-            # Merged material interfaces contain degree-three junctions; picking
-            # an arbitrary neighbour there deletes one branch and opens the PSLG.
-            ki = next((p for p in adjacency[i] if p != j), None)
-            kj = next((p for p in adjacency[j] if p != i), None)
-            if (
-                len(adjacency[i]) == 2
-                and ki is not None
-                and triangle_area(points[i], points[j], points[ki]) <= epsilon
-            ):
-                candidate_edges.discard(tuple(sorted((ki, i))))
-                candidate_edges.discard(tuple(sorted((i, j))))
-                candidate_edges.add(tuple(sorted((ki, j))))
-                done = False
-                break
-            if (
-                len(adjacency[j]) == 2
-                and kj is not None
-                and triangle_area(points[i], points[j], points[kj]) <= epsilon
-            ):
-                candidate_edges.discard(tuple(sorted((i, j))))
-                candidate_edges.discard(tuple(sorted((j, kj))))
-                candidate_edges.add(tuple(sorted((i, kj))))
-                done = False
-                break
+    # Adjacency is maintained incrementally: every collapse permanently removes
+    # one vertex from the active graph, so the total work is near-linear
+    # instead of rebuilding the adjacency per collapsed vertex.
+    adjacency: dict[int, list[int]] = {}
+    for i, j in candidate_edges:
+        adjacency.setdefault(i, []).append(j)
+        adjacency.setdefault(j, []).append(i)
+
+    def other_neighbor(vertex: int, neighbor: int) -> int | None:
+        neighbors = adjacency.get(vertex)
+        if neighbors is None or len(neighbors) != 2:
+            return None
+        return neighbors[0] if neighbors[1] == neighbor else neighbors[1]
+
+    def enqueue_around(vertex: int) -> None:
+        for neighbor in adjacency.get(vertex, ()):
+            edge = (min(vertex, neighbor), max(vertex, neighbor))
+            if edge in candidate_edges and edge not in queued:
+                queued.add(edge)
+                queue.append(edge)
+
+    def replace_neighbor(vertex: int, old: int, new: int) -> None:
+        neighbors = adjacency[vertex]
+        if old in neighbors:
+            neighbors.remove(old)
+        if new not in neighbors:
+            neighbors.append(new)
+
+    queue: deque[tuple[int, int]] = deque(candidate_edges)
+    queued: set[tuple[int, int]] = set(candidate_edges)
+    while queue:
+        edge = queue.popleft()
+        queued.discard(edge)
+        if edge not in candidate_edges:
+            continue
+        i, j = edge
+        # Only collapse vertices in the interior of a simple polyline.
+        # Merged material interfaces contain degree-three junctions; picking
+        # an arbitrary neighbour there deletes one branch and opens the PSLG.
+        ki = other_neighbor(i, j)
+        if ki is not None and triangle_area(points[i], points[j], points[ki]) <= epsilon:
+            candidate_edges.discard((min(ki, i), max(ki, i)))
+            candidate_edges.discard(edge)
+            candidate_edges.add((min(ki, j), max(ki, j)))
+            del adjacency[i]
+            replace_neighbor(j, i, ki)
+            replace_neighbor(ki, i, j)
+            enqueue_around(j)
+            enqueue_around(ki)
+            continue
+        kj = other_neighbor(j, i)
+        if kj is not None and triangle_area(points[i], points[j], points[kj]) <= epsilon:
+            candidate_edges.discard(edge)
+            candidate_edges.discard((min(j, kj), max(j, kj)))
+            candidate_edges.add((min(i, kj), max(i, kj)))
+            del adjacency[j]
+            replace_neighbor(i, j, kj)
+            replace_neighbor(kj, j, i)
+            enqueue_around(i)
+            enqueue_around(kj)
 
     used_indices = {i for e in candidate_edges for i in e}
 
@@ -126,9 +154,6 @@ def merge_polygons(
 ) -> tuple[list[Point2D], list[Edge]]:
     """Merge two polygons, deduplicating close points."""
 
-    def points_are_close(p1: Point2D, p2: Point2D, eps: float = epsilon) -> bool:
-        return abs(p1.x - p2.x) <= eps and abs(p1.y - p2.y) <= eps
-
     merged_points = list(points1)
     merged_edges: set[tuple[int, int]] = set()
 
@@ -136,18 +161,43 @@ def merge_polygons(
     for edge in edges1:
         merged_edges.add(edge.sorted().as_tuple())
 
+    # Spatial hash with epsilon-sized cells: a close point can only land in the
+    # 3x3 neighbourhood, so the full cross-scan is not needed.
+    if epsilon > 0:
+        cell = epsilon
+        buckets: dict[tuple[int, int], list[int]] = defaultdict(list)
+        for j, p1 in enumerate(merged_points):
+            buckets[(floor(p1.x / cell), floor(p1.y / cell))].append(j)
+    else:
+        buckets = None
+
     index_map: dict[int, int] = {}
     for i, p2 in enumerate(points2):
         found = None
-        for j, p1 in enumerate(merged_points):
-            if points_are_close(p1, p2, epsilon):
-                found = j
-                break
+        if buckets is not None:
+            cx, cy = floor(p2.x / cell), floor(p2.y / cell)
+            for bx in (cx - 1, cx, cx + 1):
+                for by in (cy - 1, cy, cy + 1):
+                    for j in buckets[(bx, by)]:
+                        p1 = merged_points[j]
+                        if (
+                            abs(p1.x - p2.x) <= epsilon
+                            and abs(p1.y - p2.y) <= epsilon
+                            and (found is None or j < found)
+                        ):
+                            found = j
+        else:
+            for j, p1 in enumerate(merged_points):
+                if p1.x == p2.x and p1.y == p2.y:
+                    found = j
+                    break
         if found is not None:
             index_map[i] = found
         else:
             index_map[i] = len(merged_points)
             merged_points.append(p2)
+            if buckets is not None:
+                buckets[(cx, cy)].append(index_map[i])
 
     for edge in edges2:
         ni, nj = index_map[edge.start], index_map[edge.end]

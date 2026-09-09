@@ -1,7 +1,7 @@
 # SDK Viewer Presets
 
 Streamlit presets execute ordinary ViennaPS programs in an isolated subprocess
-and pass the completed live domain directly to the lsmesher Python SDK. Interface
+and pass the completed live domain directly to the lsmesh Python SDK. Interface
 VTP files are no longer an intermediate meshing format, so ViennaPS material IDs
 survive into Triangle/TetGen and the resulting VTU.
 
@@ -37,7 +37,7 @@ from argparse import ArgumentParser
 
 import viennaps as vps
 
-from lsmesher import run_preset
+from lsmesh import run_preset
 
 parser = ArgumentParser()
 parser.add_argument("-D", dest="dim", type=int, default=3)
@@ -57,7 +57,7 @@ domain = vps.Domain(
 run_preset(domain, dimension=args.dim)
 ```
 
-There is no interface export, material sidecar, lsmesher CLI invocation, or
+There is no interface export, material sidecar, lsmesh CLI invocation, or
 manual option parsing. The viewer supplies its build, decimation, and external
 mesher controls to `run_preset()` through a private request file.
 
@@ -72,7 +72,7 @@ state, and PyMeshLab/native mesher failures must not terminate Streamlit. The
 preset process performs this complete sequence:
 
 ```text
-ViennaPS simulation -> live Domain -> lsmesher.mesh() -> VTU/VTP + manifest
+ViennaPS simulation -> live Domain -> lsmesh.mesh() -> VTU/VTP + manifest
 ```
 
 The manifest declares the output, material metadata, and generated artifacts.
@@ -86,7 +86,7 @@ Simulation and meshing run only after **Generate preset** or
 
 `run_preset()` also works outside Streamlit. Without a viewer request it uses
 the supplied dimension and writes `mesh.vtu` plus
-`lsmesher-preset-result.json` in the current directory.
+`lsmesh-preset-result.json` in the current directory.
 
 The request protocol is an implementation detail for the viewer. Application
 code should call the normal `mesh()` SDK directly when it needs explicit output

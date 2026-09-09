@@ -6,7 +6,7 @@ import os
 
 import pytest
 
-from lsmesher.geometry_types import Edge, Face, Point2D, Point3D
+from lsmesh.geometry_types import Edge, Face, Point2D, Point3D
 
 
 @pytest.fixture

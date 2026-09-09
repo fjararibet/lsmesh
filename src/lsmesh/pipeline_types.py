@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from lsmesher.geometry_types import Edge, Face, Point2D, Point3D, Region3D
+    from lsmesh.geometry_types import Edge, Face, Point2D, Point3D, Region3D
 
 
 @dataclass(frozen=True)

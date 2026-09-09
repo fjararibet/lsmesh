@@ -11,9 +11,9 @@ import numpy as np
 import pytest
 import pyvista as pv
 
-from lsmesher.cli import MesherOptions
-from lsmesher.pipeline_3d import DecimationOptions3D
-from lsmesher.viewer import (
+from lsmesh.cli import MesherOptions
+from lsmesh.pipeline_3d import DecimationOptions3D
+from lsmesh.viewer import (
     PRESETS_DIR_ENV,
     Preset,
     ProcessedMeshOptions,
@@ -480,7 +480,7 @@ def test_run_pipeline_writes_meshed_3d_vtu_directly(tmp_path, monkeypatch):
         out.write_text("tetgen", encoding="utf-8")
         return subprocess.CompletedProcess(command, 0, stdout="", stderr="")
 
-    monkeypatch.setattr("lsmesher.viewer.subprocess.run", fake_run)
+    monkeypatch.setattr("lsmesh.viewer.subprocess.run", fake_run)
 
     result = _run_pipeline(
         [input_path],
@@ -500,7 +500,7 @@ def test_run_pipeline_writes_meshed_3d_vtu_directly(tmp_path, monkeypatch):
 
     assert result == output_path
     (command,) = commands
-    assert command[:4] == [sys.executable, "-m", "lsmesher.cli", "mesh"]
+    assert command[:4] == [sys.executable, "-m", "lsmesh.cli", "mesh"]
     assert str(input_path) in command
     assert command[command.index("--format") + 1] == "vtu"
     assert command[command.index("--decimate-target-faces") + 1] == "1400"
@@ -520,7 +520,7 @@ def test_run_pipeline_raises_on_subprocess_failure(tmp_path, monkeypatch):
             command, 134, stdout="", stderr="malloc(): corrupted top size"
         )
 
-    monkeypatch.setattr("lsmesher.viewer.subprocess.run", fake_run)
+    monkeypatch.setattr("lsmesh.viewer.subprocess.run", fake_run)
 
     with pytest.raises(RuntimeError, match="exit code 134"):
         _run_pipeline(
@@ -541,7 +541,7 @@ def test_viewer_import_keeps_pymeshlab_out_of_the_process():
         [
             sys.executable,
             "-c",
-            "import sys, lsmesher.viewer; sys.exit('pymeshlab' in sys.modules)",
+            "import sys, lsmesh.viewer; sys.exit('pymeshlab' in sys.modules)",
         ],
         check=False,
         capture_output=True,
@@ -564,7 +564,7 @@ def test_write_processed_mesh_returns_requested_meshed_3d_vtu(
         output_path.write_text("tetgen", encoding="utf-8")
         return output_path
 
-    monkeypatch.setattr("lsmesher.viewer._run_pipeline", run_pipeline)
+    monkeypatch.setattr("lsmesh.viewer._run_pipeline", run_pipeline)
 
     result = _write_processed_mesh_output(
         [input_path],
@@ -602,7 +602,7 @@ def test_write_processed_mesh_overwrites_previous_output(tmp_path, monkeypatch):
         output_path.write_text("mesh", encoding="utf-8")
         return output_path
 
-    monkeypatch.setattr("lsmesher.viewer._run_pipeline", run_pipeline)
+    monkeypatch.setattr("lsmesh.viewer._run_pipeline", run_pipeline)
 
     result = _write_processed_mesh_output(
         [input_path],

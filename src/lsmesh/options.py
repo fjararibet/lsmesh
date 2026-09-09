@@ -1,8 +1,8 @@
 """Expert mesh configuration types."""
 
-from lsmesher.api import BuildOptions
-from lsmesher.meshing import MesherOptions, MeshingOptions, MeshQuality
-from lsmesher.pipeline_3d import DecimationOptions3D
+from lsmesh.api import BuildOptions
+from lsmesh.meshing import MesherOptions, MeshingOptions, MeshQuality
+from lsmesh.pipeline_3d import DecimationOptions3D
 
 MeshOptions = MeshingOptions
 

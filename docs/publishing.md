@@ -20,7 +20,7 @@ nix develop --command zsh -lc 'uv build --clear --sdist'
 Inspect `dist/` before publishing. It should contain only the intended
 `lsmesh-<version>.tar.gz` artifact for this release command. The source archive
 includes the Triangle sources and their redistribution notice, but no compiled
-`src/lsmesher/bin` files.
+`src/lsmesh/bin` files.
 
 ## Publish with GitHub trusted publishing
 

@@ -6,7 +6,7 @@ from collections import Counter
 from dataclasses import dataclass
 from typing import Literal, TypeAlias
 
-from lsmesher.pipeline_types import Geometry2D, Surface3D
+from lsmesh.pipeline_types import Geometry2D, Surface3D
 
 Severity: TypeAlias = Literal["warning", "error"]
 
@@ -34,7 +34,7 @@ class ValidationReport:
     def raise_for_errors(self) -> None:
         if self.valid:
             return
-        from lsmesher.errors import InvalidGeometryError  # noqa: PLC0415
+        from lsmesh.errors import InvalidGeometryError  # noqa: PLC0415
 
         messages = [issue.message for issue in self.issues if issue.severity == "error"]
         raise InvalidGeometryError("; ".join(messages))

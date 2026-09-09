@@ -1,6 +1,6 @@
 # Material Identities
 
-When meshing a live ViennaPS domain, lsmesher reads the material map associated
+When meshing a live ViennaPS domain, lsmesh reads the material map associated
 with its level sets. The final Triangle or TetGen mesh uses those ViennaPS IDs
 as its `Material` cell-data values. Disconnected volumes and repeated level sets
 with the same ViennaPS material therefore receive the same final value.
@@ -13,7 +13,7 @@ and may generate a different attribute for each disconnected region. Passing a
 Bosch-process mask through directly, for example, turned repeated material `0`
 into unrelated attributes `11` and `12`.
 
-lsmesher avoids giving application IDs directly to Triangle or TetGen. For each
+lsmesh avoids giving application IDs directly to Triangle or TetGen. For each
 mesher invocation it creates a temporary positive, consecutive encoding:
 
 ```text
@@ -25,7 +25,7 @@ Mask region, ViennaPS material  0 -> mesher attribute 3
 Each disconnected region seed receives a unique temporary value because TetGen
 expects region attributes to identify regions independently. Multiple temporary
 values may therefore map back to the same application material. Immediately
-after reading the external mesher output, lsmesher decodes every element
+after reading the external mesher output, lsmesh decodes every element
 attribute back to the original application ID. The temporary encoding exists
 only in the private `.poly` and mesher output files inside the invocation's
 temporary directory.
@@ -47,7 +47,7 @@ remain the public result when no IDs were supplied.
 
 ViennaPS level sets are nested and a material region is not necessarily below
 the corresponding local surface. For every connected component of an upper
-layer, lsmesher deterministically evaluates the centroid ray of each candidate
+layer, lsmesh deterministically evaluates the centroid ray of each candidate
 face. It brackets the face against the nearest separated crossing of the
 preceding interface in either vertical direction and selects the interval with
 the greatest clearance. The region seed is the interval midpoint.

@@ -7,7 +7,7 @@ wheels/
 *.egg-info
 
 # Compiled binaries (built by hatch hook)
-src/lsmesher/bin/
+src/lsmesh/bin/
 
 # Output files
 *.node
@@ -16,6 +16,9 @@ src/lsmesher/bin/
 *.off
 *.vtp
 *.vtu
+mesh.automatic.json
+mesh.triangle.log
+*.vpsd
 
 # Local Streamlit example datasets
 .viewer_cache/

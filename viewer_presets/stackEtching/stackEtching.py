@@ -1,7 +1,7 @@
 import viennaps as vps
 from argparse import ArgumentParser
 
-from lsmesher import run_preset
+from lsmesh import run_preset
 
 # parse config file name and simulation dimension
 parser = ArgumentParser(

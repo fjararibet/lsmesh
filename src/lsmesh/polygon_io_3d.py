@@ -5,7 +5,7 @@ from pathlib import Path
 
 import vtk
 
-from lsmesher.geometry_types import Edge, Face, Point3D, Region3D
+from lsmesh.geometry_types import Edge, Face, Point3D, Region3D
 
 
 def read_poly(

@@ -1,7 +1,7 @@
 """Tests for pure 2D pipeline transformations."""
 
-from lsmesher.geometry_types import Edge, Point2D
-from lsmesher.pipeline_2d import (
+from lsmesh.geometry_types import Edge, Point2D
+from lsmesh.pipeline_2d import (
     _region_seed_candidates,
     build_2d_poly_geometry,
     close_2d_layer,
@@ -11,8 +11,8 @@ from lsmesher.pipeline_2d import (
     merge_2d_layers,
     simplify_2d_geometry,
 )
-from lsmesher.pipeline_types import Geometry2D, Layer2D
-from lsmesher.validation import validate
+from lsmesh.pipeline_types import Geometry2D, Layer2D
+from lsmesh.validation import validate
 
 
 def fixed_attribute_sampler(_layer, _previous, *, originally_closed):

@@ -9,9 +9,9 @@ from typing import TYPE_CHECKING, Protocol
 
 import numpy as np
 
-from lsmesher.geometry_types import Face, Point3D, Region3D
-from lsmesher.pipeline_types import Surface3D
-from lsmesher.polygon_io_3d import (
+from lsmesh.geometry_types import Face, Point3D, Region3D
+from lsmesh.pipeline_types import Surface3D
+from lsmesh.polygon_io_3d import (
     read_vtp_faces,
     read_vtp_points,
     to_off_string,

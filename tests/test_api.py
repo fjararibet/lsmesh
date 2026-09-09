@@ -5,17 +5,17 @@ from types import SimpleNamespace
 
 import pytest
 
-from lsmesher import BuildOptions, DecimationOptions3D, build_from_files
-from lsmesher.api import (
+from lsmesh import BuildOptions, DecimationOptions3D, build_from_files
+from lsmesh.api import (
     _viennals_meshes,
     build_from_viennaps,
     layer_from_viennals,
     materials_from_viennaps,
     surface_from_viennals,
 )
-from lsmesher.geometry_types import Edge, Face, Point2D, Point3D
-from lsmesher.pipeline_2d import seeded_2d_attribute_sampler
-from lsmesher.pipeline_types import Layer2D
+from lsmesh.geometry_types import Edge, Face, Point2D, Point3D
+from lsmesh.pipeline_2d import seeded_2d_attribute_sampler
+from lsmesh.pipeline_types import Layer2D
 
 
 class FakeMesh:
@@ -159,7 +159,7 @@ def test_build_from_viennaps_writes_repeated_material_ids(monkeypatch):
         triangles=((0, 1, 2), (0, 2, 3)),
     )
     monkeypatch.setattr(
-        "lsmesher.api._viennals_meshes",
+        "lsmesh.api._viennals_meshes",
         lambda _domain, _dimension: (lower, upper),
     )
 

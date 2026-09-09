@@ -4,8 +4,8 @@ Regression tests for geometry_3d module
 
 import pytest
 
-# Import from the new lsmesher package
-from lsmesher.geometry_3d import (
+# Import from the new lsmesh package
+from lsmesh.geometry_3d import (
     centroid,
     close_solid,
     connect_all_ends,
@@ -16,7 +16,7 @@ from lsmesher.geometry_3d import (
     sampling,
     triangle_area,
 )
-from lsmesher.geometry_types import Edge, Face, Point2D, Point3D
+from lsmesh.geometry_types import Edge, Face, Point2D, Point3D
 
 
 def p(x: float, y: float, z: float) -> Point3D:

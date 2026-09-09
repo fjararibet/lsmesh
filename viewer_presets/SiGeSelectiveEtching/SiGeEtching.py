@@ -3,7 +3,7 @@ from argparse import ArgumentParser
 import viennaps as ps
 from SiGeStackGeometry import CreateGeometry
 
-from lsmesher import run_preset
+from lsmesh import run_preset
 
 
 parser = ArgumentParser(description="Run selective SiGe stack etching.")

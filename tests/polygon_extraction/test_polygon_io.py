@@ -4,10 +4,10 @@ Regression tests for polygon_io_2d module
 
 import pytest
 
-from lsmesher.geometry_types import Edge, Face, Point2D
+from lsmesh.geometry_types import Edge, Face, Point2D
 
-# Import from the new lsmesher package
-from lsmesher.polygon_io_2d import (
+# Import from the new lsmesh package
+from lsmesh.polygon_io_2d import (
     read_poly,
     read_vtp_edges,
     read_vtp_points,

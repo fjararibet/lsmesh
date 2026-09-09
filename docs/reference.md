@@ -6,74 +6,74 @@ re-exported by the `lsmesh` root; `MeshOptions` is the documented alias of
 
 ## Meshing
 
-::: lsmesher.meshing.mesh
+::: lsmesh.meshing.mesh
 
-::: lsmesher.meshing.write
+::: lsmesh.meshing.write
 
 ## Building and validating
 
-::: lsmesher.api.build_from_viennaps
+::: lsmesh.api.build_from_viennaps
 
-::: lsmesher.api.build_from_files
+::: lsmesh.api.build_from_files
 
-::: lsmesher.api.materials_from_viennaps
+::: lsmesh.api.materials_from_viennaps
 
-::: lsmesher.validation.validate
+::: lsmesh.validation.validate
 
-::: lsmesher.validation.ValidationReport
+::: lsmesh.validation.ValidationReport
 
-::: lsmesher.validation.ValidationIssue
+::: lsmesh.validation.ValidationIssue
 
 ## Options
 
-::: lsmesher.meshing.MeshingOptions
+::: lsmesh.meshing.MeshingOptions
 
-::: lsmesher.api.BuildOptions
+::: lsmesh.api.BuildOptions
 
-::: lsmesher.meshing.MesherOptions
+::: lsmesh.meshing.MesherOptions
 
-::: lsmesher.pipeline_3d.DecimationOptions3D
+::: lsmesh.pipeline_3d.DecimationOptions3D
 
 ## Results
 
-::: lsmesher.results.MeshResult2D
+::: lsmesh.results.MeshResult2D
 
-::: lsmesher.results.MeshResult3D
+::: lsmesh.results.MeshResult3D
 
-::: lsmesher.results.MeshQualityReport
+::: lsmesh.results.MeshQualityReport
 
-::: lsmesher.results.AutomaticMeshReport
+::: lsmesh.results.AutomaticMeshReport
 
-::: lsmesher.results.MeshAttemptReport
+::: lsmesh.results.MeshAttemptReport
 
-::: lsmesher.pipeline_3d.DecimationReport
+::: lsmesh.pipeline_3d.DecimationReport
 
-::: lsmesher.results.MaterialInfo
+::: lsmesh.results.MaterialInfo
 
 ## Geometry and meshes
 
-::: lsmesher.pipeline_types.Geometry2D
+::: lsmesh.pipeline_types.Geometry2D
 
-::: lsmesher.pipeline_types.Surface3D
+::: lsmesh.pipeline_types.Surface3D
 
-::: lsmesher.results.TetrahedralMesh3D
+::: lsmesh.results.TetrahedralMesh3D
 
 ## Errors
 
-::: lsmesher.errors.LsmesherError
+::: lsmesh.errors.LsmeshError
 
-::: lsmesher.errors.UnsupportedSourceError
+::: lsmesh.errors.UnsupportedSourceError
 
-::: lsmesher.errors.InvalidGeometryError
+::: lsmesh.errors.InvalidGeometryError
 
-::: lsmesher.errors.AutomaticMeshingError
+::: lsmesh.errors.AutomaticMeshingError
 
-::: lsmesher.errors.MesherNotFoundError
+::: lsmesh.errors.MesherNotFoundError
 
-::: lsmesher.errors.MesherError
+::: lsmesh.errors.MesherError
 
-::: lsmesher.errors.TriangleError
+::: lsmesh.errors.TriangleError
 
-::: lsmesher.errors.TetGenError
+::: lsmesh.errors.TetGenError
 
-::: lsmesher.errors.DependencyError
+::: lsmesh.errors.DependencyError

@@ -1,6 +1,6 @@
 import viennaps as ps
 
-from lsmesher import run_preset
+from lsmesh import run_preset
 import numpy as np
 from argparse import ArgumentParser
 

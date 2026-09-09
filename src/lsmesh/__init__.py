@@ -5,34 +5,37 @@ such as :mod:`lsmesh.geometry`, :mod:`lsmesh.options`, and :mod:`lsmesh.errors`
 remain available for browsing larger APIs.
 """
 
-from lsmesher.api import (
+from lsmesh.api import (
     BuildOptions,
+    build_3d_from_files_with_report,
+    build_3d_from_viennaps_with_report,
     build_from_files,
     build_from_viennaps,
     materials_from_viennaps,
 )
-from lsmesher.errors import (
+from lsmesh.errors import (
     AutomaticMeshingError,
     DependencyError,
     InvalidGeometryError,
-    LsmesherError,
+    LsmeshError,
     MesherError,
     MesherNotFoundError,
     TetGenError,
     TriangleError,
     UnsupportedSourceError,
 )
-from lsmesher.geometry_types import Edge, Face, Point2D, Point3D, Region3D
-from lsmesher.meshing import (
+from lsmesh.geometry_types import Edge, Face, Point2D, Point3D, Region3D
+from lsmesh.meshing import (
     MesherOptions,
     MeshingOptions,
     MeshQuality,
     mesh,
     write,
 )
-from lsmesher.pipeline_3d import DecimationOptions3D, DecimationReport
-from lsmesher.pipeline_types import Geometry2D, Layer2D, Surface3D
-from lsmesher.results import (
+from lsmesh.pipeline_3d import DecimationOptions3D, DecimationReport
+from lsmesh.pipeline_types import Geometry2D, Layer2D, Surface3D
+from lsmesh.presets import run_preset
+from lsmesh.results import (
     AutomaticMeshReport,
     MaterialInfo,
     MeshAttemptReport,
@@ -42,7 +45,7 @@ from lsmesher.results import (
     MeshResult3D,
     TetrahedralMesh3D,
 )
-from lsmesher.validation import ValidationIssue, ValidationReport, validate
+from lsmesh.validation import ValidationIssue, ValidationReport, validate
 
 MeshOptions = MeshingOptions
 
@@ -58,7 +61,7 @@ __all__ = [
     "Geometry2D",
     "InvalidGeometryError",
     "Layer2D",
-    "LsmesherError",
+    "LsmeshError",
     "MaterialInfo",
     "MeshAttemptReport",
     "MeshOptions",
@@ -81,10 +84,13 @@ __all__ = [
     "UnsupportedSourceError",
     "ValidationIssue",
     "ValidationReport",
+    "build_3d_from_files_with_report",
+    "build_3d_from_viennaps_with_report",
     "build_from_files",
     "build_from_viennaps",
     "materials_from_viennaps",
     "mesh",
+    "run_preset",
     "validate",
     "write",
 ]

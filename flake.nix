@@ -1,5 +1,5 @@
 {
-  description = "lsmesher Streamlit viewer";
+  description = "lsmesh Python meshing library and development tools";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -43,7 +43,7 @@
     };
   };
 
-  outputs = inputs@{ nixpkgs, ... }:
+  outputs = inputs@{ self, nixpkgs, ... }:
     let
       systems = [
         "x86_64-linux"
@@ -119,7 +119,7 @@
             else
               "/usr/lib/aarch64-linux-gnu/libcuda.so.1";
           includePath = pkgs.lib.makeSearchPathOutput "dev" "include" runtimeLibs;
-          cudaTestSource = pkgs.writeText "lsmesher-cuda-test.cu" ''
+          cudaTestSource = pkgs.writeText "lsmesh-cuda-test.cu" ''
             #include <cuda_runtime.h>
             #include <dlfcn.h>
             #include <link.h>
@@ -163,23 +163,23 @@
             }
           '';
           cudaTest = pkgs.stdenv.mkDerivation {
-            pname = "lsmesher-cuda-test";
+            pname = "lsmesh-cuda-test";
             version = "1";
             dontUnpack = true;
             nativeBuildInputs = [ cudaPackages.cuda_nvcc pkgs.makeWrapper ];
             buildInputs = [ cudaPackages.cuda_cudart ];
             buildPhase = ''
               runHook preBuild
-              nvcc -arch=sm_120 ${cudaTestSource} -o lsmesher-cuda-test
+              nvcc -arch=sm_120 ${cudaTestSource} -o lsmesh-cuda-test
               runHook postBuild
             '';
             installPhase = ''
               runHook preInstall
-              install -Dm755 lsmesher-cuda-test $out/bin/lsmesher-cuda-test
+              install -Dm755 lsmesh-cuda-test $out/bin/lsmesh-cuda-test
               runHook postInstall
             '';
             postFixup = ''
-              wrapProgram $out/bin/lsmesher-cuda-test \
+              wrapProgram $out/bin/lsmesh-cuda-test \
                 --set LD_PRELOAD ${hostCudaDriver}
             '';
           };
@@ -311,7 +311,7 @@
               exec ${pkgs.stdenv.cc}/bin/cc -std=gnu89 "$@"
             '';
           };
-          mkLsmesherApp = name: command: pkgs.writeShellApplication {
+          mkLsmeshApp = name: command: pkgs.writeShellApplication {
             inherit name;
             runtimeInputs = [
               triangleCc
@@ -328,10 +328,10 @@
               exec uv run --frozen ${command} "$@"
             '';
           };
-          runViewer = mkLsmesherApp "lsmesher-viewer" "--extra viewer lsmesher-viewer";
-          runCli = mkLsmesherApp "lsmesher" "lsmesher";
+          runViewer = mkLsmeshApp "lsmesh-viewer" "--extra viewer lsmesh-viewer";
+          runCli = mkLsmeshApp "lsmesh" "lsmesh";
           runDocs = pkgs.writeShellApplication {
-            name = "lsmesher-docs";
+            name = "lsmesh-docs";
             runtimeInputs = [ pkgs.uv ];
             text = ''
               exec uvx --from mkdocs --with mkdocs-material --with "mkdocstrings[python]" --with ruff mkdocs serve "$@"
@@ -341,27 +341,29 @@
         {
           apps.default = {
             type = "app";
-            program = "${runViewer}/bin/lsmesher-viewer";
-            meta.description = "Launch the lsmesher Streamlit viewer";
+            program = "${runViewer}/bin/lsmesh-viewer";
+            meta.description = "Launch the lsmesh Streamlit viewer";
           };
           apps.viewer = {
             type = "app";
-            program = "${runViewer}/bin/lsmesher-viewer";
-            meta.description = "Launch the lsmesher Streamlit viewer";
+            program = "${runViewer}/bin/lsmesh-viewer";
+            meta.description = "Launch the lsmesh Streamlit viewer";
           };
           apps.cli = {
             type = "app";
-            program = "${runCli}/bin/lsmesher";
-            meta.description = "Run the lsmesher command-line interface";
+            program = if system == "x86_64-linux"
+              then "${self.packages.${system}.lsmesh}/bin/lsmesh"
+              else "${runCli}/bin/lsmesh";
+            meta.description = "Run the lsmesh command-line interface";
           };
           apps.docs = {
             type = "app";
-            program = "${runDocs}/bin/lsmesher-docs";
+            program = "${runDocs}/bin/lsmesh-docs";
             meta.description = "Serve the documentation site locally";
           };
           apps.cuda-test = {
             type = "app";
-            program = "${cudaTest}/bin/lsmesher-cuda-test";
+            program = "${cudaTest}/bin/lsmesh-cuda-test";
             meta.description = "Verify that CUDA can access the NVIDIA GPU";
           };
 
@@ -381,7 +383,7 @@
                 xset fp+ ${pkgs.font-misc-misc}/share/fonts/X11/misc 2>/dev/null || true
                 xset fp rehash 2>/dev/null || true
               fi
-              echo "lsmesher development environment loaded"
+              echo "lsmesh development environment loaded"
               echo "VTK path: ${pkgs.vtk}"
             '';
           };
@@ -403,7 +405,7 @@
               export CUDAARCHS="''${CUDAARCHS:-120}"
               export PYTHONPATH="${cudaPythonPath}:''${PYTHONPATH:-}"
               export UV_PYTHON="${cudaPython}/bin/python"
-              export LSMESHER_CUDA_DRIVER="${hostCudaDriver}"
+              export LSMESH_CUDA_DRIVER="${hostCudaDriver}"
               # Load only the host driver itself. Adding the host library
               # directory would also expose its glibc to Nix programs.
               export LD_PRELOAD="${hostCudaDriver}''${LD_PRELOAD:+:$LD_PRELOAD}"
@@ -412,7 +414,7 @@
                 xset fp+ ${pkgs.font-misc-misc}/share/fonts/X11/misc 2>/dev/null || true
                 xset fp rehash 2>/dev/null || true
               fi
-              echo "lsmesher CUDA development environment loaded"
+              echo "lsmesh CUDA development environment loaded"
               echo "CUDA toolkit: ${cudaPackages.cuda_nvcc}"
               echo "CUDA architecture: $CMAKE_CUDA_ARCHITECTURES"
             '';
@@ -420,8 +422,36 @@
         };
     in
     {
+      overlays.default = import ./nix/overlay.nix;
+      packages = forAllSystems (system:
+        (perSystem system).packages // nixpkgs.lib.optionalAttrs (system == "x86_64-linux") (
+        let
+          pkgs = import nixpkgs {
+            system = "x86_64-linux";
+            overlays = [ self.overlays.default ];
+          };
+        in
+        {
+          default = pkgs.python3Packages.lsmesh;
+          lsmesh = pkgs.python3Packages.lsmesh;
+        }
+      ));
+      checks.x86_64-linux.consumer =
+        let
+          pkgs = import nixpkgs {
+            system = "x86_64-linux";
+            overlays = [ self.overlays.default ];
+          };
+          python = pkgs.python3.withPackages (ps: [ ps.lsmesh ]);
+        in
+        pkgs.runCommand "lsmesh-consumer-check" { nativeBuildInputs = [ pkgs.uv ]; } ''
+          export UV_CACHE_DIR="$TMPDIR/uv-cache"
+          export UV_PYTHON_DOWNLOADS=never
+          uv run --offline --no-project --no-config --python ${python}/bin/python ${./tests/nix_consumer.py}
+          ${python}/bin/lsmesh --help > /dev/null
+          touch "$out"
+        '';
       apps = forAllSystems (system: (perSystem system).apps);
       devShells = forAllSystems (system: (perSystem system).devShells);
-      packages = forAllSystems (system: (perSystem system).packages);
     };
 }

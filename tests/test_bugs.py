@@ -2,9 +2,9 @@
 
 import pytest
 
-# Import from the new lsmesher package
-from lsmesher.geometry_2d import connect_prev, constrained_sampling, sampling
-from lsmesher.geometry_types import Edge, Point2D
+# Import from the new lsmesh package
+from lsmesh.geometry_2d import connect_prev, constrained_sampling, sampling
+from lsmesh.geometry_types import Edge, Point2D
 
 
 class TestConnectPrevBug:
@@ -16,7 +16,7 @@ class TestConnectPrevBug:
     indices that would have been assigned (bad). This causes IndexError
     when those edges are used later.
 
-    Location: lsmesher/geometry_2d.py
+    Location: lsmesh/geometry_2d.py
     """
 
     def test_connect_prev_creates_invalid_edge_indices(self):
@@ -69,7 +69,7 @@ class TestSamplingInfiniteLoopBug:
     interior area, the random sampling loops forever trying to find a point
     inside the polygon.
 
-    Location: lsmesher/geometry_2d.py
+    Location: lsmesh/geometry_2d.py
 
     NOTE: These tests use pytest-timeout to detect infinite loops.
     Install with: uv pip install pytest-timeout

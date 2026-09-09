@@ -1,5 +1,5 @@
 """
-End-to-end tests for the unified lsmesher CLI.
+End-to-end tests for the unified lsmesh CLI.
 
 These tests run the full command-line pipeline from VTP inputs to OFF output
 and verify the output matches expected results byte-for-byte.
@@ -20,14 +20,14 @@ def _pymeshlab_available():
 
 
 class Test2DExtraction:
-    """End-to-end tests for 2D polygon extraction via lsmesher."""
+    """End-to-end tests for 2D polygon extraction via lsmesh."""
 
     def test_2d_polygon_extraction_off_output(self, tmp_path):
         """
         Test full 2D pipeline: VTP files -> OFF output.
 
         Runs:
-            lsmesher mesh --no-mesh --no-holes \
+            lsmesh mesh --no-mesh --no-holes \
                 interface_0.vtp ... interface_7.vtp \
                 -o out.off
 
@@ -43,7 +43,7 @@ class Test2DExtraction:
             [
                 sys.executable,
                 "-m",
-                "lsmesher.cli",
+                "lsmesh.cli",
                 "mesh",
                 "--no-holes",
             ]
@@ -74,14 +74,14 @@ class Test2DExtraction:
 
 
 class Test3DExtraction:
-    """End-to-end tests for 3D solid extraction via lsmesher."""
+    """End-to-end tests for 3D solid extraction via lsmesh."""
 
     def test_3d_solid_extraction_off_output(self, tmp_path):
         """
         Test full 3D pipeline: VTP file -> OFF output.
 
         Runs:
-            lsmesher mesh --no-mesh --no-holes \
+            lsmesh mesh --no-mesh --no-holes \
                 interface_1.vtp \
                 -o 3Dout.off
 
@@ -97,7 +97,7 @@ class Test3DExtraction:
         cmd = [
             sys.executable,
             "-m",
-            "lsmesher.cli",
+            "lsmesh.cli",
             "mesh",
             "--no-mesh",
             "--no-holes",

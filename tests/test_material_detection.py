@@ -1,7 +1,7 @@
 """Tests for 2D material detection."""
 
-from lsmesher import geometry_2d as g2d
-from lsmesher.geometry_types import Edge, Point2D
+from lsmesh import geometry_2d as g2d
+from lsmesh.geometry_types import Edge, Point2D
 
 
 def test_nested_polygons_get_distinct_region_points() -> None:

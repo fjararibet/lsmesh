@@ -5,7 +5,7 @@ from pathlib import Path
 
 import vtk
 
-from lsmesher.geometry_types import (
+from lsmesh.geometry_types import (
     Edge,
     Face,
     Point2D,

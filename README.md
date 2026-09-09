@@ -8,11 +8,75 @@ validation, quality, material, and retry information.
 ## Installation
 
 ```bash
-pip install lsmesh
+uv add lsmesh
 ```
 
 Triangle is bundled with the package. Generating 3D tetrahedral meshes requires
 the `tetgen` executable to be available on `PATH`.
+
+### Using the library from another flake
+
+The flake exports `packages.x86_64-linux.lsmesh` (also `default`) and
+`overlays.default`. Use the overlay to add `lsmesh` to the same Python package
+set as the rest of your project:
+
+```nix
+{
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    lsmesh.url = "github:fjararibet/lsmesh/main";
+    lsmesh.inputs.nixpkgs.follows = "nixpkgs";
+  };
+
+  outputs = { nixpkgs, lsmesh, ... }:
+    let
+      system = "x86_64-linux";
+      pkgs = import nixpkgs {
+        inherit system;
+        overlays = [ lsmesh.overlays.default ];
+      };
+      python = pkgs.python3.withPackages (ps: [ ps.lsmesh ]);
+    in
+    {
+      devShells.${system}.default = pkgs.mkShell {
+        packages = [ python pkgs.uv ];
+        env.UV_PYTHON = "${python}/bin/python";
+      };
+    };
+}
+```
+
+Inside `nix develop`, run `uv run --no-project script.py` to use that Nix Python
+environment. Add other Python dependencies to `withPackages`; an independently
+managed uv virtual environment will not automatically inherit Nix's packages.
+If you package the consuming project with `buildPythonPackage`, include
+`pkgs.python3Packages.lsmesh` in its `dependencies` instead.
+
+The Nix package includes Triangle and resolves TetGen by its Nix store path,
+so library callers need no extra compiler or `PATH` setup. It uses Nixpkgs'
+NumPy, SciPy, VTK, and PyMeshLab, and the ViennaLS/ViennaPS wheels pinned in
+this repository's `uv.lock`. SciPy and VTK version bounds are relaxed only in
+the Nix package to use Nixpkgs' versions. The packaged library currently
+supports **x86-64 Linux**; the locked Vienna wheels do not support Linux ARM.
+The overlay selects wheels for the chosen CPython version and reports an error
+if no matching wheel exists in the lock file.
+
+To pick up the newest pushed commit, run this in the consuming project:
+
+```sh
+nix flake update lsmesh
+nix develop
+```
+
+Flakes retain their pinned commit until updated, even when the input points at
+`main`. For automatic updates on entry, use `nix flake update lsmesh && nix develop`.
+No PyPI release or package version bump is needed for Git input updates.
+
+From this repository, `nix build .#lsmesh` builds the library and
+`nix flake check` checks downstream imports and actual 2D/3D meshing.
+`nix run .#cli -- --help` runs the packaged CLI on x86-64 Linux.
+`nix run .` and `nix run .#docs` remain development launchers intended to run
+from this checkout.
 
 ## Python API
 
@@ -128,7 +192,7 @@ result.write("another-output.vtu")
 
 ### Errors
 
-All recoverable library failures derive from `LsmesherError`:
+All recoverable library failures derive from `LsmeshError`:
 
 ```python
 try:
@@ -138,7 +202,7 @@ except lsmesh.AutomaticMeshingError as error:
         print(attempt.name, attempt.error)
 except lsmesh.MesherNotFoundError as error:
     print(error.mesher)
-except lsmesh.LsmesherError as error:
+except lsmesh.LsmeshError as error:
     print(error)
 ```
 
@@ -168,18 +232,18 @@ See [`docs/examples/`](docs/examples) for complete ViennaPS scripts using lsmesh
 
 ## Command-line interface
 
-The package installs the `lsmesher` command:
+The package installs the `lsmesh` command:
 
 ```bash
-lsmesher --help
-lsmesher mesh --help
+lsmesh --help
+lsmesh mesh --help
 ```
 
 Mesh one or more exported VTP interfaces:
 
 ```bash
-lsmesher mesh interface.vtp --out mesh.vtu
-lsmesher mesh substrate.vtp oxide.vtp mask.vtp --out mesh.vtu
+lsmesh mesh interface.vtp --out mesh.vtu
+lsmesh mesh substrate.vtp oxide.vtp mask.vtp --out mesh.vtu
 ```
 
 Input dimension is detected from the VTP cell type: lines are treated as 2D
@@ -204,5 +268,5 @@ Useful options include:
 For the complete option reference:
 
 ```bash
-lsmesher mesh --help
+lsmesh mesh --help
 ```

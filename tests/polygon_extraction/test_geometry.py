@@ -2,8 +2,8 @@
 Regression tests for geometry_2d module
 """
 
-# Import from the new lsmesher package
-from lsmesher.geometry_2d import (
+# Import from the new lsmesh package
+from lsmesh.geometry_2d import (
     centroid,
     connect_all_ends,
     connect_ends,
@@ -17,7 +17,7 @@ from lsmesher.geometry_2d import (
     sampling,
     triangle_area,
 )
-from lsmesher.geometry_types import Edge, Point2D
+from lsmesh.geometry_types import Edge, Point2D
 
 
 def p(x: float, y: float) -> Point2D:

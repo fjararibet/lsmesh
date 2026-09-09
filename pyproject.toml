@@ -23,10 +23,11 @@ classifiers = [
     "Topic :: Scientific/Engineering",
 ]
 dependencies = [
+    "numpy>=2",
     "pymeshlab~=2025.7",
     "scipy~=1.16.3",
     "viennaps>=4.5.0",
-    "viennals>=5.7.r",
+    "viennals>=5.7.3",
     "vtk~=9.4.2",
 ]
 
@@ -44,12 +45,15 @@ build-backend = "hatchling.build"
 [tool.hatch.build.hooks.custom]
 path = "hatch_build_triangle.py"
 
+[tool.hatch.build.targets.wheel]
+packages = ["src/lsmesh"]
+
 [tool.hatch.build.targets.sdist]
 include = [
     "README.md",
     "hatch_build_triangle.py",
     "pyproject.toml",
-    "src/lsmesher",
+    "src/lsmesh",
     "vendor/triangle",
 ]
 
@@ -67,8 +71,8 @@ dev = [
 ]
 
 [project.scripts]
-lsmesher = "lsmesher.cli:main"
-lsmesher-viewer = "lsmesher.viewer_cli:main"
+lsmesh = "lsmesh.cli:main"
+lsmesh-viewer = "lsmesh.viewer_cli:main"
 
 [project.urls]
 Repository = "https://github.com/fjararibet/lsmesh"
@@ -105,7 +109,7 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"src/lsmesher/cli.py" = ["S606"]
+"src/lsmesh/cli.py" = ["S606"]
 "docs/examples/**/*" = ["ALL"]
 "viewer_presets/**/*" = ["ALL"]
 "interface_extraction_example/**/*" = ["ALL"]
@@ -123,7 +127,7 @@ classmethod-decorators = ["classmethod"]
 staticmethod-decorators = ["staticmethod"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["lsmesher"]
+known-first-party = ["lsmesh"]
 
 [tool.ruff.format]
 quote-style = "double"
@@ -136,8 +140,8 @@ testpaths = ["tests"]
 
 [tool.ty.src]
 # The Streamlit/PyVista viewer is a development aid with incomplete upstream stubs.
-include = ["src/lsmesher"]
-exclude = ["src/lsmesher/viewer.py"]
+include = ["src/lsmesh"]
+exclude = ["src/lsmesh/viewer.py"]
 
 [tool.ruff.lint.flake8-annotations]
 allow-star-arg-any = false

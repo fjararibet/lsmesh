@@ -8,14 +8,14 @@ from dataclasses import asdict, fields
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal, TypeVar, cast
 
-from lsmesher.api import BuildOptions, ViennaPSDomain
-from lsmesher.meshing import MesherOptions, MeshingOptions, mesh
-from lsmesher.pipeline_3d import DecimationOptions3D
+from lsmesh.api import BuildOptions, ViennaPSDomain
+from lsmesh.meshing import MesherOptions, MeshingOptions, mesh
+from lsmesh.pipeline_3d import DecimationOptions3D
 
 if TYPE_CHECKING:
-    from lsmesher.results import MeshResult2D, MeshResult3D
+    from lsmesh.results import MeshResult2D, MeshResult3D
 
-PRESET_REQUEST_ENV = "LSMESHER_PRESET_REQUEST"
+PRESET_REQUEST_ENV = "LSMESH_PRESET_REQUEST"
 OptionsT = TypeVar("OptionsT")
 
 
@@ -55,7 +55,7 @@ def _request(dimension: int | None) -> dict[str, Any]:
     return {
         "dimension": dimension,
         "output_path": str(Path.cwd() / "mesh.vtu"),
-        "manifest_path": str(Path.cwd() / "lsmesher-preset-result.json"),
+        "manifest_path": str(Path.cwd() / "lsmesh-preset-result.json"),
         "automatic": True,
     }
 
