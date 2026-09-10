@@ -16,11 +16,17 @@ if TYPE_CHECKING:
 
 @dataclass(frozen=True)
 class MaterialInfo:
-    """ViennaPS material assigned to one mesh region."""
+    """ViennaPS material assigned to one level-set region.
+
+    A consumed material remains in the metadata so callers can distinguish
+    physical layer removal from a failed extraction. Only active materials
+    are expected to appear in the generated volume mesh.
+    """
 
     region: int
     material_id: int
     name: str
+    status: Literal["active", "consumed"] = "active"
 
 
 @dataclass(frozen=True)
