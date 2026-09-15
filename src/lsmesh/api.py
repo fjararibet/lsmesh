@@ -26,7 +26,7 @@ from lsmesh.pipeline_3d import (
 from lsmesh.pipeline_types import Geometry2D, Layer2D, Surface3D
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Collection, Sequence
     from pathlib import Path
     from typing import Any
 
@@ -123,15 +123,26 @@ def _viennals_meshes(
         msg = "ViennaPS domain contains no level sets"
         raise ValueError(msg)
 
-    cells = meshes[0].getLines() if dimension == 2 else meshes[0].getTriangles()
-    if not cells:
+    if not any(_surface_cells(mesh, dimension) for mesh in meshes):
         msg = f"ViennaPS domain does not contain {dimension}D surface elements"
         raise ValueError(msg)
     return tuple(meshes)
 
 
-def materials_from_viennaps(domain: ViennaPSDomain) -> tuple[MaterialInfo, ...]:
-    """Return the ViennaPS material corresponding to each 1-based region."""
+def _surface_cells(mesh: ViennaLSMesh, dimension: Dimension) -> Sequence[Sequence[int]]:
+    return mesh.getLines() if dimension == 2 else mesh.getTriangles()
+
+
+def materials_from_viennaps(
+    domain: ViennaPSDomain,
+    *,
+    active_regions: Collection[int] | None = None,
+) -> tuple[MaterialInfo, ...]:
+    """Return the ViennaPS material corresponding to each 1-based region.
+
+    When ``active_regions`` is supplied, regions absent from that collection
+    are reported as consumed rather than silently removed from the metadata.
+    """
     from lsmesh.results import MaterialInfo  # noqa: PLC0415
 
     material_map = domain.getMaterialMap()
@@ -140,6 +151,11 @@ def materials_from_viennaps(domain: ViennaPSDomain) -> tuple[MaterialInfo, ...]:
             region=index + 1,
             material_id=material_map.getMaterialIdAtIdx(index),
             name=material_map.toString(material_map.getMaterialAtIdx(index)),
+            status=(
+                "active"
+                if active_regions is None or index + 1 in active_regions
+                else "consumed"
+            ),
         )
         for index in range(material_map.size())
     )
@@ -150,6 +166,54 @@ def _material_ids_from_viennaps(domain: ViennaPSDomain) -> tuple[int, ...]:
     return tuple(
         material_map.getMaterialIdAtIdx(index) for index in range(material_map.size())
     )
+
+
+def _active_viennaps_inputs(
+    domain: ViennaPSDomain,
+    dimension: Dimension,
+) -> tuple[tuple[ViennaLSMesh, ...], tuple[int, ...], tuple[MaterialInfo, ...]]:
+    meshes = _viennals_meshes(domain, dimension)
+    material_ids = _material_ids_from_viennaps(domain)
+    if len(material_ids) != len(meshes):
+        msg = "ViennaPS material count does not match the number of level sets"
+        raise ValueError(msg)
+
+    active_indices = tuple(
+        index for index, mesh in enumerate(meshes) if _surface_cells(mesh, dimension)
+    )
+    active_regions = {index + 1 for index in active_indices}
+    return (
+        tuple(meshes[index] for index in active_indices),
+        tuple(material_ids[index] for index in active_indices),
+        materials_from_viennaps(domain, active_regions=active_regions),
+    )
+
+
+def _build_from_viennaps_with_metadata(
+    domain: ViennaPSDomain,
+    dimension: Dimension,
+    *,
+    options: BuildOptions | None = None,
+) -> tuple[BuiltGeometry, DecimationReport | None, tuple[MaterialInfo, ...]]:
+    config = options or BuildOptions()
+    meshes, material_ids, materials = _active_viennaps_inputs(domain, dimension)
+    if dimension == 2:
+        geometry = build_2d_poly_geometry(
+            tuple(layer_from_viennals(mesh) for mesh in meshes),
+            epsilon=config.epsilon,
+            detect_holes=config.detect_holes,
+            sampler=_sampler(config),
+            material_ids=material_ids,
+        )
+        return geometry, None, materials
+    geometry, report = build_3d_surface_with_report(
+        tuple(surface_from_viennals(mesh) for mesh in meshes),
+        decimation=config.decimation,
+        bottom_margin=config.bottom_margin,
+        seam_protection_rings=config.seam_protection_rings,
+        material_ids=material_ids,
+    )
+    return geometry, report, materials
 
 
 @overload
@@ -220,24 +284,12 @@ def build_from_viennaps(
 ) -> BuiltGeometry:
     """Build a closed geometry directly from a live ``viennaps.Domain``."""
     _validate_dimension(dimension)
-    config = options or BuildOptions()
-    meshes = _viennals_meshes(domain, dimension)
-    material_ids = _material_ids_from_viennaps(domain)
-    if dimension == 2:
-        return build_2d_poly_geometry(
-            tuple(layer_from_viennals(mesh) for mesh in meshes),
-            epsilon=config.epsilon,
-            detect_holes=config.detect_holes,
-            sampler=_sampler(config),
-            material_ids=material_ids,
-        )
-    return build_3d_surface(
-        tuple(surface_from_viennals(mesh) for mesh in meshes),
-        decimation=config.decimation,
-        bottom_margin=config.bottom_margin,
-        seam_protection_rings=config.seam_protection_rings,
-        material_ids=material_ids,
+    geometry, _, _ = _build_from_viennaps_with_metadata(
+        domain,
+        dimension,
+        options=options,
     )
+    return geometry
 
 
 def build_3d_from_files_with_report(
@@ -257,15 +309,12 @@ def build_3d_from_viennaps_with_report(
     domain: ViennaPSDomain, *, options: BuildOptions | None = None
 ) -> tuple[Surface3D, DecimationReport | None]:
     """Build a 3D ViennaPS domain and retain decimation statistics."""
-    config = options or BuildOptions()
-    meshes = _viennals_meshes(domain, 3)
-    return build_3d_surface_with_report(
-        tuple(surface_from_viennals(mesh) for mesh in meshes),
-        decimation=config.decimation,
-        bottom_margin=config.bottom_margin,
-        seam_protection_rings=config.seam_protection_rings,
-        material_ids=_material_ids_from_viennaps(domain),
+    geometry, report, _ = _build_from_viennaps_with_metadata(
+        domain,
+        3,
+        options=options,
     )
+    return cast("Surface3D", geometry), report
 
 
 def _validate_dimension(dimension: object) -> None:

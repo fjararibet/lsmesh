@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from collections import defaultdict
 from dataclasses import dataclass
 from itertools import pairwise, product
@@ -27,8 +28,10 @@ BOTTOM_MARGIN = 0.10
 SIDE_WALL_TOLERANCE_FACTOR = 5e-4
 SEAM_PROTECTION_RINGS = 8
 DEFAULT_TARGET_TOTAL_FACES = 5_600
+TETGEN_SURFACE_QUALITY_FLOOR = 1e-3
 CoordinateKey = tuple[float, float, float]
 EdgeKey = tuple[CoordinateKey, CoordinateKey]
+Vector3 = tuple[float, float, float]
 
 
 @dataclass(frozen=True)
@@ -173,8 +176,18 @@ def _has_fold_edges(surface: Surface3D) -> bool:
 
 
 def _deduplicate_surface(
-    surface: Surface3D, *, precision: int = COORDINATE_PRECISION
+    surface: Surface3D,
+    *,
+    precision: int = COORDINATE_PRECISION,
+    cancel_opposing: bool = False,
 ) -> Surface3D:
+    """Merge coincident points and repeated faces.
+
+    ``cancel_opposing`` is for one physical input surface only. It treats
+    opposing copies of the same face as a zero-thickness fold and removes
+    the pair. It must stay disabled after material surfaces are concatenated,
+    because an interface shared by two materials must remain in the PLC once.
+    """
     points: list[Point3D] = []
     point_indices: dict[tuple[float, float, float], int] = {}
     remap: dict[int, int] = {}
@@ -185,19 +198,413 @@ def _deduplicate_surface(
             points.append(point)
         remap[index] = point_indices[key]
 
-    faces: list[Face] = []
-    seen_faces: set[tuple[int, ...]] = set()
+    remapped_faces: list[tuple[int, tuple[int, ...]]] = []
     for face in surface.faces:
         vertices = tuple(remap[vertex] for vertex in face.vertices)
         if len(set(vertices)) < 3:
             continue
-        key = tuple(sorted(vertices))
-        if key in seen_faces:
-            continue
-        seen_faces.add(key)
-        faces.append(Face(vertices))
+        remapped_faces.append((len(remapped_faces), vertices))
 
-    return Surface3D(points=tuple(points), faces=tuple(faces))
+    if cancel_opposing:
+        selected = _faces_after_opposing_cancellation(remapped_faces)
+    else:
+        selected = []
+        seen_faces: set[tuple[int, ...]] = set()
+        for index, vertices in remapped_faces:
+            key = tuple(sorted(vertices))
+            if key in seen_faces:
+                continue
+            seen_faces.add(key)
+            selected.append((index, vertices))
+
+    used = {vertex for _, vertices in selected for vertex in vertices}
+    compact_remap: dict[int, int] = {}
+    compact_points: list[Point3D] = []
+    for index, point in enumerate(points):
+        if index in used:
+            compact_remap[index] = len(compact_points)
+            compact_points.append(point)
+    faces = tuple(
+        Face(tuple(compact_remap[vertex] for vertex in vertices))
+        for _, vertices in sorted(selected)
+    )
+
+    return Surface3D(points=tuple(compact_points), faces=faces)
+
+
+def _canonical_face_cycle(vertices: tuple[int, ...]) -> tuple[int, ...]:
+    return min(vertices[index:] + vertices[:index] for index in range(len(vertices)))
+
+
+def _faces_after_opposing_cancellation(
+    faces: Sequence[tuple[int, tuple[int, ...]]],
+) -> list[tuple[int, tuple[int, ...]]]:
+    """Cancel opposite-winding face pairs and collapse equal-winding copies."""
+    groups: dict[
+        tuple[int, ...], dict[tuple[int, ...], list[tuple[int, tuple[int, ...]]]]
+    ] = defaultdict(lambda: defaultdict(list))
+    for indexed_face in faces:
+        _, vertices = indexed_face
+        groups[tuple(sorted(vertices))][_canonical_face_cycle(vertices)].append(
+            indexed_face
+        )
+
+    selected: list[tuple[int, tuple[int, ...]]] = []
+    for orientations in groups.values():
+        handled: set[tuple[int, ...]] = set()
+        for orientation, copies in orientations.items():
+            if orientation in handled:
+                continue
+            opposite = _canonical_face_cycle(tuple(reversed(orientation)))
+            opposing_copies = orientations.get(opposite, [])
+            handled.add(orientation)
+            handled.add(opposite)
+            difference = len(copies) - len(opposing_copies)
+            if difference > 0:
+                selected.append(copies[0])
+            elif difference < 0:
+                selected.append(opposing_copies[0])
+    return selected
+
+
+def _triangle_metrics(
+    surface: Surface3D,
+    vertices: tuple[int, ...],
+) -> tuple[float, tuple[float, float, float], Vector3]:
+    first, second, third = (surface.points[vertex] for vertex in vertices)
+    ab = (second.x - first.x, second.y - first.y, second.z - first.z)
+    ac = (third.x - first.x, third.y - first.y, third.z - first.z)
+    bc = (third.x - second.x, third.y - second.y, third.z - second.z)
+    normal = (
+        ab[1] * ac[2] - ab[2] * ac[1],
+        ab[2] * ac[0] - ab[0] * ac[2],
+        ab[0] * ac[1] - ab[1] * ac[0],
+    )
+    squared_lengths = (
+        sum(value * value for value in ab),
+        sum(value * value for value in bc),
+        sum(value * value for value in ac),
+    )
+    normal_length = math.sqrt(sum(value * value for value in normal))
+    squared_length_sum = sum(squared_lengths)
+    quality = (
+        2.0 * math.sqrt(3.0) * normal_length / squared_length_sum
+        if squared_length_sum > 0
+        else 0.0
+    )
+    return quality, squared_lengths, normal
+
+
+def _dot(first: Vector3, second: Vector3) -> float:
+    return sum(a * b for a, b in zip(first, second, strict=True))
+
+
+def _fan_boundary_cycle(
+    center: int,
+    faces: Sequence[Face],
+) -> tuple[int, int, int] | None:
+    directed_edges: list[tuple[int, int]] = []
+    for face in faces:
+        if len(face.vertices) != 3:
+            return None
+        opposite_edges = [
+            (start, end)
+            for start, end in zip(
+                face.vertices,
+                (*face.vertices[1:], face.vertices[0]),
+                strict=True,
+            )
+            if center not in (start, end)
+        ]
+        if len(opposite_edges) != 1:
+            return None
+        directed_edges.append(opposite_edges[0])
+
+    successor = dict(directed_edges)
+    if len(successor) != 3 or set(successor) != set(successor.values()):
+        return None
+    start = min(successor)
+    second = successor[start]
+    third = successor.get(second)
+    if third is None or successor.get(third) != start:
+        return None
+    return (start, second, third)
+
+
+def _inverted_fan_face(
+    surface: Surface3D,
+    center: int,
+    incident_indices: Sequence[int],
+    face_indices_by_key: dict[tuple[int, ...], set[int]],
+) -> Face | None:
+    incident = [surface.faces[index] for index in incident_indices]
+    cycle = _fan_boundary_cycle(center, incident)
+    if cycle is None or center in cycle:
+        return None
+    if face_indices_by_key[tuple(sorted(cycle))] - set(incident_indices):
+        return None
+
+    _, outer_squared_lengths, outer_normal = _triangle_metrics(surface, cycle)
+    outer_normal_length = math.sqrt(_dot(outer_normal, outer_normal))
+    scale = math.sqrt(max(outer_squared_lengths))
+    if outer_normal_length == 0 or scale == 0:
+        return None
+    origin = surface.points[cycle[0]]
+    point = surface.points[center]
+    offset = (
+        point.x - origin.x,
+        point.y - origin.y,
+        point.z - origin.z,
+    )
+    plane_distance = abs(_dot(offset, outer_normal)) / outer_normal_length
+    if plane_distance > max(1e-12, scale * 1e-6):
+        return None
+
+    normals = [_triangle_metrics(surface, face.vertices)[2] for face in incident]
+    normal_lengths = [math.sqrt(_dot(normal, normal)) for normal in normals]
+    tolerance = outer_normal_length * max(normal_lengths) * 1e-9
+    orientation = [_dot(normal, outer_normal) for normal in normals]
+    if min(orientation) >= -tolerance or max(orientation) <= tolerance:
+        return None
+    return Face(cycle)
+
+
+def _repair_inverted_fans(surface: Surface3D) -> Surface3D:
+    """Replace coplanar, inverted degree-three fans by their outer triangle."""
+    for _ in range(16):
+        vertex_faces: dict[int, list[int]] = defaultdict(list)
+        face_indices_by_key: dict[tuple[int, ...], set[int]] = defaultdict(set)
+        for face_index, face in enumerate(surface.faces):
+            face_indices_by_key[tuple(sorted(face.vertices))].add(face_index)
+            for vertex in set(face.vertices):
+                vertex_faces[vertex].append(face_index)
+
+        replacements: dict[int, Face] = {}
+        removed: set[int] = set()
+        locked_vertices: set[int] = set()
+        for center, incident_indices in sorted(vertex_faces.items()):
+            if len(incident_indices) != 3:
+                continue
+            replacement = _inverted_fan_face(
+                surface,
+                center,
+                incident_indices,
+                face_indices_by_key,
+            )
+            if replacement is None:
+                continue
+            star_vertices = {center, *replacement.vertices}
+            if star_vertices & locked_vertices:
+                continue
+            replacements[min(incident_indices)] = replacement
+            removed.update(incident_indices)
+            locked_vertices.update(star_vertices)
+
+        if not replacements:
+            return surface
+        surface = Surface3D(
+            points=surface.points,
+            faces=tuple(
+                replacements.get(index, face)
+                for index, face in enumerate(surface.faces)
+                if index not in removed or index in replacements
+            ),
+            regions=surface.regions,
+        )
+    return surface
+
+
+def _collapse_direction_score(
+    surface: Surface3D,
+    *,
+    removed: int,
+    retained: int,
+    vertex_faces: dict[int, list[int]],
+) -> float | None:
+    qualities: list[float] = []
+    for face_index in vertex_faces[removed]:
+        face = surface.faces[face_index]
+        if len(face.vertices) != 3:
+            return None
+        vertices = tuple(
+            retained if vertex == removed else vertex for vertex in face.vertices
+        )
+        if len(set(vertices)) < 3:
+            continue
+        _, _, old_normal = _triangle_metrics(surface, face.vertices)
+        quality, _, new_normal = _triangle_metrics(surface, vertices)
+        if _dot(new_normal, new_normal) == 0 or _dot(old_normal, new_normal) <= 0:
+            return None
+        qualities.append(quality)
+    return min(qualities, default=math.inf)
+
+
+def _surface_adjacency(
+    surface: Surface3D,
+) -> tuple[
+    dict[tuple[int, int], list[int]],
+    dict[int, list[int]],
+    dict[int, set[int]],
+]:
+    edge_faces: dict[tuple[int, int], list[int]] = defaultdict(list)
+    vertex_faces: dict[int, list[int]] = defaultdict(list)
+    neighbors: dict[int, set[int]] = defaultdict(set)
+    for face_index, face in enumerate(surface.faces):
+        for vertex in set(face.vertices):
+            vertex_faces[vertex].append(face_index)
+        for start, end in zip(
+            face.vertices,
+            (*face.vertices[1:], face.vertices[0]),
+            strict=True,
+        ):
+            edge_faces[tuple(sorted((start, end)))].append(face_index)
+            neighbors[start].add(end)
+            neighbors[end].add(start)
+    return edge_faces, vertex_faces, neighbors
+
+
+def _sliver_candidates(surface: Surface3D) -> dict[tuple[int, int], float]:
+    candidates: dict[tuple[int, int], float] = {}
+    for face in surface.faces:
+        if len(face.vertices) != 3:
+            continue
+        quality, squared_lengths, _ = _triangle_metrics(surface, face.vertices)
+        if quality >= TETGEN_SURFACE_QUALITY_FLOOR:
+            continue
+        edges = (
+            (face.vertices[0], face.vertices[1]),
+            (face.vertices[1], face.vertices[2]),
+            (face.vertices[2], face.vertices[0]),
+        )
+        edge_vertices = edges[squared_lengths.index(min(squared_lengths))]
+        edge = (min(edge_vertices), max(edge_vertices))
+        candidates[edge] = min(quality, candidates.get(edge, math.inf))
+    return candidates
+
+
+def _collapse_preserves_link(
+    surface: Surface3D,
+    edge: tuple[int, int],
+    edge_faces: dict[tuple[int, int], list[int]],
+    neighbors: dict[int, set[int]],
+) -> bool:
+    incident = edge_faces[edge]
+    opposite = {
+        vertex
+        for face_index in incident
+        for vertex in surface.faces[face_index].vertices
+        if vertex not in edge
+    }
+    return (
+        len(incident) == 2
+        and len(opposite) == 2
+        and neighbors[edge[0]] & neighbors[edge[1]] == opposite
+        and tuple(sorted(opposite)) not in edge_faces
+    )
+
+
+def _preferred_collapse(
+    surface: Surface3D,
+    edge: tuple[int, int],
+    vertex_faces: dict[int, list[int]],
+) -> tuple[int, int] | None:
+    first, second = edge
+    directions: list[tuple[float, int, int]] = []
+    for removed, retained in ((second, first), (first, second)):
+        score = _collapse_direction_score(
+            surface,
+            removed=removed,
+            retained=retained,
+            vertex_faces=vertex_faces,
+        )
+        if score is not None:
+            directions.append((score, -retained, removed))
+    if not directions:
+        return None
+    _, negative_retained, removed = max(directions)
+    return removed, -negative_retained
+
+
+def _select_sliver_collapses(
+    surface: Surface3D,
+    candidates: dict[tuple[int, int], float],
+    edge_faces: dict[tuple[int, int], list[int]],
+    vertex_faces: dict[int, list[int]],
+    neighbors: dict[int, set[int]],
+) -> dict[int, int]:
+    protected = {
+        vertex
+        for edge, incident in edge_faces.items()
+        if len(incident) != 2
+        for vertex in edge
+    }
+    protected.update(_seam_vertices(surface))
+    collapsed: dict[int, int] = {}
+    locked_vertices: set[int] = set()
+    for edge, _ in sorted(candidates.items(), key=lambda item: (item[1], item[0])):
+        first, second = edge
+        influence = {first, second, *neighbors[first], *neighbors[second]}
+        if influence & locked_vertices or {first, second} & protected:
+            continue
+        if not _collapse_preserves_link(surface, edge, edge_faces, neighbors):
+            continue
+        direction = _preferred_collapse(surface, edge, vertex_faces)
+        if direction is None:
+            continue
+        removed, retained = direction
+        collapsed[removed] = retained
+        locked_vertices.update(influence)
+    return collapsed
+
+
+def _apply_vertex_collapses(
+    surface: Surface3D,
+    collapsed: dict[int, int],
+) -> Surface3D:
+    faces: list[Face] = []
+    seen: set[tuple[int, ...]] = set()
+    for face in surface.faces:
+        vertices = tuple(collapsed.get(vertex, vertex) for vertex in face.vertices)
+        key = tuple(sorted(vertices))
+        if len(set(vertices)) < 3 or key in seen:
+            continue
+        seen.add(key)
+        faces.append(Face(vertices))
+    return Surface3D(
+        points=surface.points,
+        faces=tuple(faces),
+        regions=surface.regions,
+    )
+
+
+def _collapse_sliver_edges(surface: Surface3D) -> Surface3D:
+    """Collapse only topology-safe interior edges of near-collinear triangles."""
+    for _ in range(32):
+        candidates = _sliver_candidates(surface)
+        if not candidates:
+            break
+        edge_faces, vertex_faces, neighbors = _surface_adjacency(surface)
+        collapsed = _select_sliver_collapses(
+            surface,
+            candidates,
+            edge_faces,
+            vertex_faces,
+            neighbors,
+        )
+        if not collapsed:
+            break
+        surface = _apply_vertex_collapses(surface, collapsed)
+    return surface
+
+
+def _repair_merged_surface(surface: Surface3D) -> Surface3D:
+    repaired = _collapse_sliver_edges(_repair_inverted_fans(surface))
+    compact = _deduplicate_surface(repaired)
+    return Surface3D(
+        points=compact.points,
+        faces=compact.faces,
+        regions=surface.regions,
+    )
 
 
 def _face_edges(surface: Surface3D, face: Face) -> list[EdgeKey]:
@@ -314,7 +721,8 @@ def decimate_3d_patch(
         target = max(target, len(boundary))
     while target < len(triangulated.faces):
         decimated = _deduplicate_surface(
-            _decimate_patch_once(triangulated, target, options)
+            _decimate_patch_once(triangulated, target, options),
+            cancel_opposing=True,
         )
         boundary_ok = (
             not options.preserve_boundary or _boundary_edge_keys(decimated) == boundary
@@ -892,11 +1300,16 @@ def merge_3d_surfaces(
     Input surfaces must conform exactly where they coincide (identical
     vertices and faces), as produced by extracting wrapped level sets from a
     shared grid. Coincident points and duplicate faces are merged so shared
-    interface faces appear exactly once.
+    interface faces appear exactly once. Opposing duplicates are cancelled
+    within each input before the material surfaces are combined; guarded
+    local repairs then remove inverted fans and near-collinear triangles.
     """
     if not surfaces:
         msg = "Cannot merge 3D surfaces: no surfaces."
         raise ValueError(msg)
+    surfaces = tuple(
+        _deduplicate_surface(surface, cancel_opposing=True) for surface in surfaces
+    )
     if any(not surface.points for surface in surfaces):
         msg = "Cannot merge 3D surfaces: all surfaces must have points."
         raise ValueError(msg)
@@ -936,10 +1349,12 @@ def merge_3d_surfaces(
     merged = _deduplicate_surface(
         Surface3D(points=tuple(merged_points), faces=tuple(merged_faces))
     )
-    return Surface3D(
-        points=merged.points,
-        faces=merged.faces,
-        regions=regions,
+    return _repair_merged_surface(
+        Surface3D(
+            points=merged.points,
+            faces=merged.faces,
+            regions=regions,
+        )
     )
 
 
@@ -1096,6 +1511,9 @@ def build_3d_surface_with_report(  # noqa: PLR0913
     material_ids: Sequence[int] | None = None,
 ) -> tuple[Surface3D, DecimationReport | None]:
     """Build a closed surface and return decimation statistics when enabled."""
+    surfaces = tuple(
+        _deduplicate_surface(surface, cancel_opposing=True) for surface in surfaces
+    )
     decimation = decimation or DecimationOptions3D()
     report = None
     if decimation.enabled or decimator is not None:

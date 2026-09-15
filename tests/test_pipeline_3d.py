@@ -10,6 +10,7 @@ from lsmesh.geometry_types import Face, Point3D, Region3D
 from lsmesh.pipeline_3d import (
     DecimationOptions3D,
     _area_weighted_targets,
+    _boundary_edges,
     _component_region_point,
     _has_fold_edges,
     _single_patch_target,
@@ -507,6 +508,134 @@ def test_merge_3d_surfaces_keeps_shared_faces_once():
     assert len(result.faces) == 5
     shared = Face((1, 2, 6, 5))
     assert result.faces.count(shared) == 1
+
+
+def test_merge_3d_surfaces_cancels_opposing_faces_within_one_surface(monkeypatch):
+    """An opposing duplicate pair is a removable zero-thickness fold flap."""
+    points = (
+        Point3D(0.0, 0.0, 0.0),
+        Point3D(1.0, 0.0, 0.0),
+        Point3D(0.0, 1.0, 0.0),
+        Point3D(0.0, 0.0, 1.0),
+    )
+    folded = Surface3D(
+        points=points,
+        faces=(Face((0, 1, 2)), Face((0, 2, 1)), Face((0, 2, 3))),
+    )
+    monkeypatch.setattr(
+        "lsmesh.pipeline_3d.collect_3d_regions",
+        lambda *_args, **_kwargs: (),
+    )
+
+    result = merge_3d_surfaces((folded,))
+
+    assert result.points == (points[0], points[2], points[3])
+    assert result.faces == (Face((0, 1, 2)),)
+
+
+def test_merge_3d_surfaces_retains_cross_material_interface(monkeypatch):
+    """Opposing copies from different inputs merge once instead of cancelling."""
+    points = (
+        Point3D(0.0, 0.0, 0.0),
+        Point3D(1.0, 0.0, 0.0),
+        Point3D(0.0, 1.0, 0.0),
+    )
+    first = Surface3D(points=points, faces=(Face((0, 1, 2)),))
+    second = Surface3D(points=points, faces=(Face((0, 2, 1)),))
+    monkeypatch.setattr(
+        "lsmesh.pipeline_3d.collect_3d_regions",
+        lambda *_args, **_kwargs: (),
+    )
+
+    result = merge_3d_surfaces((first, second))
+
+    assert result.points == points
+    assert result.faces == (Face((0, 1, 2)),)
+
+
+def test_merge_3d_surfaces_retriangulates_inverted_degree_three_fan(monkeypatch):
+    """A coplanar fan with one flipped triangle becomes its outer triangle."""
+    surface = Surface3D(
+        points=(
+            Point3D(0.0, 1.0, 0.0),
+            Point3D(0.0, 0.0, 0.0),
+            Point3D(1.0, 0.0, 0.0),
+            Point3D(-0.01, 0.4, 0.0),
+        ),
+        faces=(Face((0, 1, 3)), Face((3, 1, 2)), Face((3, 2, 0))),
+    )
+    monkeypatch.setattr(
+        "lsmesh.pipeline_3d.collect_3d_regions",
+        lambda *_args, **_kwargs: (),
+    )
+
+    result = merge_3d_surfaces((surface,))
+
+    assert result.points == surface.points[:3]
+    assert result.faces == (Face((0, 1, 2)),)
+
+
+def test_merge_3d_surfaces_collapses_safe_interior_sliver(monkeypatch):
+    """A short interior edge is collapsed without opening a closed surface."""
+    top, bottom, first, near, third, fourth = range(6)
+    surface = Surface3D(
+        points=(
+            Point3D(0.0, 0.0, 1.0),
+            Point3D(0.0, 0.0, -1.0),
+            Point3D(1.0, 0.0, 0.0),
+            Point3D(1.0, 1e-6, 0.0),
+            Point3D(-1.0, 0.0, 0.0),
+            Point3D(0.0, -1.0, 0.0),
+        ),
+        faces=(
+            Face((top, first, near)),
+            Face((top, near, third)),
+            Face((top, third, fourth)),
+            Face((top, fourth, first)),
+            Face((bottom, near, first)),
+            Face((bottom, third, near)),
+            Face((bottom, fourth, third)),
+            Face((bottom, first, fourth)),
+        ),
+    )
+    monkeypatch.setattr(
+        "lsmesh.pipeline_3d.collect_3d_regions",
+        lambda *_args, **_kwargs: (),
+    )
+
+    result = merge_3d_surfaces((surface,))
+
+    assert len(result.points) == 5
+    assert len(result.faces) == 6
+    assert _boundary_edges(result) == ()
+
+
+def test_merge_3d_surfaces_rejects_topology_changing_sliver_collapse(monkeypatch):
+    """The full link check protects the four-face tetrahedron boundary."""
+    surface = Surface3D(
+        points=(
+            Point3D(1.0, 0.0, 0.0),
+            Point3D(1.0, 1e-6, 0.0),
+            Point3D(0.0, 0.0, 1.0),
+            Point3D(0.0, 0.0, -1.0),
+        ),
+        faces=(
+            Face((0, 1, 2)),
+            Face((0, 3, 1)),
+            Face((0, 2, 3)),
+            Face((1, 3, 2)),
+        ),
+    )
+    monkeypatch.setattr(
+        "lsmesh.pipeline_3d.collect_3d_regions",
+        lambda *_args, **_kwargs: (),
+    )
+
+    result = merge_3d_surfaces((surface,))
+
+    assert result.points == surface.points
+    assert result.faces == surface.faces
+    assert _boundary_edges(result) == ()
 
 
 def test_collect_3d_regions_samples_one_point_per_layer():

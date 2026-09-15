@@ -7,6 +7,7 @@ import pytest
 
 from lsmesh import BuildOptions, DecimationOptions3D, build_from_files
 from lsmesh.api import (
+    _build_from_viennaps_with_metadata,
     _viennals_meshes,
     build_from_viennaps,
     layer_from_viennals,
@@ -15,7 +16,7 @@ from lsmesh.api import (
 )
 from lsmesh.geometry_types import Edge, Face, Point2D, Point3D
 from lsmesh.pipeline_2d import seeded_2d_attribute_sampler
-from lsmesh.pipeline_types import Layer2D
+from lsmesh.pipeline_types import Layer2D, Surface3D
 
 
 class FakeMesh:
@@ -127,6 +128,98 @@ def test_materials_from_viennaps_preserves_region_order():
         (1, 0, "Si"),
         (2, 4, "SiO2"),
     ]
+
+
+def test_viennals_extraction_accepts_consumed_first_level_set(monkeypatch):
+    consumed = FakeMesh(())
+    active = FakeMesh(
+        ((0, 0, 0), (1, 0, 0), (0, 1, 0)),
+        triangles=((0, 1, 2),),
+    )
+
+    class OutputMesh:
+        def __init__(self) -> None:
+            self.nodes = ()
+            self.lines = ()
+            self.triangles = ()
+
+        def load(self, source) -> None:
+            self.nodes = source.getNodes()
+            self.lines = source.getLines()
+            self.triangles = source.getTriangles()
+
+        def getNodes(self):  # noqa: N802
+            return self.nodes
+
+        def getLines(self):  # noqa: N802
+            return self.lines
+
+        def getTriangles(self):  # noqa: N802
+            return self.triangles
+
+    class ToSurfaceMesh:
+        def __init__(self, source, destination) -> None:
+            self.source = source
+            self.destination = destination
+
+        def apply(self) -> None:
+            self.destination.load(self.source)
+
+    domain = SimpleNamespace(getLevelSets=lambda: (consumed, active))
+    monkeypatch.setitem(
+        sys.modules,
+        "viennals",
+        SimpleNamespace(
+            Mesh=OutputMesh,
+            d2=SimpleNamespace(ToSurfaceMesh=ToSurfaceMesh),
+            d3=SimpleNamespace(ToSurfaceMesh=ToSurfaceMesh),
+        ),
+    )
+
+    meshes = _viennals_meshes(domain, 3)
+
+    assert meshes[0].getTriangles() == ()
+    assert meshes[1].getTriangles() == ((0, 1, 2),)
+
+
+def test_viennaps_build_filters_consumed_layers_and_reports_status(monkeypatch):
+    consumed = FakeMesh(())
+    active = FakeMesh(
+        ((0, 0, 0), (1, 0, 0), (0, 1, 1)),
+        triangles=((0, 1, 2),),
+    )
+    expected = Surface3D(
+        points=(
+            Point3D(0.0, 0.0, 0.0),
+            Point3D(1.0, 0.0, 0.0),
+            Point3D(0.0, 1.0, 1.0),
+        ),
+        faces=(Face((0, 1, 2)),),
+    )
+    captured = {}
+
+    def build(surfaces, **kwargs: object):
+        captured["surfaces"] = surfaces
+        captured["material_ids"] = kwargs["material_ids"]
+        return expected, None
+
+    monkeypatch.setattr(
+        "lsmesh.api._viennals_meshes",
+        lambda _domain, _dimension: (consumed, active),
+    )
+    monkeypatch.setattr("lsmesh.api.build_3d_surface_with_report", build)
+
+    geometry, report, materials = _build_from_viennaps_with_metadata(
+        FakeDomain(),  # type: ignore[arg-type]
+        3,
+        options=BuildOptions(decimation=DecimationOptions3D(enabled=False)),
+    )
+
+    assert geometry is expected
+    assert report is None
+    assert len(captured["surfaces"]) == 1
+    assert captured["material_ids"] == (4,)
+    assert [material.status for material in materials] == ["consumed", "active"]
 
 
 class RepeatedMaterialMap(FakeMaterialMap):

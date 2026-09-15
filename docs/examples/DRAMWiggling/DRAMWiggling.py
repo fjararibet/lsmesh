@@ -1,5 +1,8 @@
-import viennaps as ps
 from argparse import ArgumentParser
+
+import viennaps as ps
+
+import lsmesh
 
 
 # parse config file name and simulation dimension
@@ -65,6 +68,10 @@ modelParams.Ions.sigmaEnergy = params["sigmaEnergy"]
 modelParams.Ions.exponent = params["ionExponent"]
 modelParams.Ions.n_l = 200
 modelParams.Substrate.B_sp = 0.75
+# This example models an ideal hard mask. ViennaPS defaults allow Mask to
+# sputter away, which can consume its level set before the final mesh step.
+modelParams.Mask.A_sp = 0.0
+modelParams.Mask.B_sp = 0.0
 model = ps.HBrO2Etching(modelParams)
 
 coverageParameters = ps.CoverageParameters()
@@ -91,3 +98,5 @@ numSteps = int(params["numSteps"])
 for i in range(numSteps):
     # run the process
     process.apply()
+
+lsmesh.mesh(geometry, "mesh.vtu", dimension=args.dim)

@@ -53,6 +53,10 @@ modelParams.Ions.sigmaEnergy = params["sigmaEnergy"]
 modelParams.Ions.exponent = params["ionExponent"]
 modelParams.Ions.n_l = 200
 modelParams.Substrate.B_sp = 0.75
+# This preset models an ideal hard mask. ViennaPS defaults allow Mask to
+# sputter away, which can consume its level set before the final mesh step.
+modelParams.Mask.A_sp = 0.0
+modelParams.Mask.B_sp = 0.0
 model = ps.HBrO2Etching(modelParams)
 
 coverageParameters = ps.CoverageParameters()
