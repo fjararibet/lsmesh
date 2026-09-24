@@ -1,8 +1,7 @@
-# Automatic mesh quality
+# Automatic quality selection
 
-The `quality=` argument selects an automatic meshing strategy. It derives
-scale-aware sizing, checks the generated mesh, and performs bounded recovery —
-without requiring Triangle, TetGen, or decimation parameters:
+The `quality=` argument selects a meshing policy. It derives scale-aware
+sizing, checks the generated mesh, and retries selected failures:
 
 ```python
 result = lsmesh.mesh(domain, quality="accurate")
@@ -20,8 +19,8 @@ use `options=` instead (see [Lower-level options](options.md)).
 
 ## Presets
 
-Policies express intent: they control multipliers and acceptance targets rather
-than exposing raw mesher parameters.
+Policies set sizing multipliers and acceptance targets. They do not expose raw
+mesher parameters.
 
 | Quality | Surface edge target | Volume edge scale | TetGen ratio | Shape-quality p05 target |
 | --- | ---: | ---: | ---: | ---: |
@@ -41,9 +40,8 @@ edge scale is converted to a regular-tetrahedron volume:
 maximum_volume = volume_edge^3 / (6 * sqrt(2))
 ```
 
-In 2D the same API is accepted, but the presets primarily drive the 3D surface
-and tetrahedral pipeline; Triangle uses its configured minimum-angle
-constraint.
+The presets primarily affect 3D surface and volume meshing. In 2D, Triangle
+uses its configured minimum-angle constraint.
 
 ## Bounded recovery
 
@@ -72,9 +70,9 @@ After external meshing, lsmesh requires:
 - every expected material ID present in the element attributes;
 - no unknown material ID when a material map is available.
 
-A successful mesher run is not sufficient if a material disappeared or a
-zero or inverted element exists. ViennaPS material IDs, including `0`, are
-preserved in the final mesh (see [Material Identities](material-identities.md)).
+A successful mesher run is rejected if a material is missing or an element has
+zero or negative measure. ViennaPS material IDs, including `0`, are preserved
+in the output (see [Material identities](material-identities.md)).
 
 The shape-quality measure is the normalized mean ratio: `1` for an equilateral
 triangle or regular tetrahedron, approaching `0` for a degenerate element.
@@ -127,5 +125,5 @@ except lsmesh.AutomaticMeshingError as error:
 lsmesh.mesh(domain, quality="accurate", options=lsmesh.MeshOptions())
 ```
 
-Choose `quality=` for automatic sizing, validation, and recovery. Choose
-`options=` when you need exact parameters and one deterministic attempt.
+Use `quality=` for automatic sizing and recovery. Use `options=` for explicit
+parameters and one attempt.

@@ -1,8 +1,8 @@
-# Overview
+# API overview
 
-`lsmesh` converts ViennaLS and ViennaPS interfaces into material-resolved 2D
-triangle meshes and 3D tetrahedral meshes. It accepts a live ViennaPS domain,
-one or more exported VTP interfaces, or an already constructed lsmesh geometry.
+`lsmesh` converts ViennaLS/ViennaPS interfaces into material-resolved 2D
+triangle and 3D tetrahedral meshes. Inputs may be a live ViennaPS domain,
+ordered VTP interfaces, or an `lsmesh` geometry.
 
 ```python
 import lsmesh
@@ -24,10 +24,9 @@ lsmesh.mesh(
 )
 ```
 
-`mesh()` runs the complete pipeline: it extracts the interfaces from the input,
-constructs a closed material-aware boundary, validates that boundary, runs
-Triangle in 2D or TetGen in 3D, verifies element measures, mesh quality, and
-material coverage, and returns a typed result.
+`mesh()` builds and validates a material-aware boundary, invokes Triangle (2D)
+or TetGen (3D), checks element measures and material coverage, and returns a
+typed result with quality information.
 
 ## Inputs
 
@@ -50,16 +49,15 @@ A single VTP interface can be passed as a path:
 result = lsmesh.mesh("interface.vtp")
 ```
 
-For several interfaces, order them from the lowest or innermost level set to
-the highest or outermost:
+Order multiple interfaces from the lowest/innermost to the highest/outermost
+level set:
 
 ```python
 result = lsmesh.mesh(["substrate.vtp", "oxide.vtp", "mask.vtp"])
 ```
 
-File inputs do not contain the ViennaPS material map. Their generated region
-attributes therefore use the interface order rather than application-specific
-material IDs.
+VTP files do not include the ViennaPS material map. Region attributes therefore
+follow interface order rather than application-specific material IDs.
 
 ### Typed geometries
 
@@ -73,10 +71,9 @@ result = lsmesh.mesh(geometry)
 
 ## Dimension
 
-The dimension is inferred from the input: `Geometry2D` means 2D, `Surface3D`
-means 3D, ViennaPS domains carry their dimension, and VTP files are classified
-by whether they contain line segments or polygons. Pass it explicitly only when
-the input cannot be identified:
+The dimension is inferred from typed geometry and ViennaPS domains. VTP files
+are classified by cell type (lines for 2D, polygons for 3D). Specify
+`dimension` when it cannot be inferred:
 
 ```python
 result_2d = lsmesh.mesh(domain_2d, dimension=2)
@@ -85,7 +82,7 @@ result_3d = lsmesh.mesh(domain_3d, dimension=3)
 
 ## Output
 
-Omitting the output path keeps `mesh()` free of persistent output files:
+Without an output path, `mesh()` writes no files:
 
 ```python
 result = lsmesh.mesh(domain)
@@ -98,9 +95,8 @@ An output path can be supplied as a convenience:
 result = lsmesh.mesh(domain, "device.vtu")
 ```
 
-With an output path, sidecar reports are written next to it (mesher logs,
-decimation statistics, automatic-meshing decisions) and surfaced through
-`result.report_paths`.
+When an output path is given, reports and logs are written beside it and listed
+in `result.report_paths`.
 
 ## The result
 
@@ -143,20 +139,19 @@ All package errors derive from `LsmeshError`:
 
 ## Choosing an API level
 
-Use the automatic API unless you need a specific mesher parameter:
+Use automatic quality selection for general use:
 
 ```python
 result = lsmesh.mesh(domain, quality="accurate")
 ```
 
-Use `options=` when exact settings and a single deterministic attempt are
-required:
+Use `options=` for explicit settings and a single attempt:
 
 ```python
 result = lsmesh.mesh(domain, options=lsmesh.MeshOptions(...))
 ```
 
-Use the individual operations below when integrating lsmesh into a custom
+Use the individual operations below to integrate `lsmesh` into another
 pipeline.
 
 See [Automatic mesh quality](quality.md) for the high-level presets and

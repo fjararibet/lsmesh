@@ -1,10 +1,9 @@
 # Examples
 
-These examples mirror the Python examples from the
+The examples are based on the Python scripts in the
 [official ViennaPS repository](https://github.com/ViennaTools/ViennaPS/tree/master/examples).
-The ViennaPS geometry and process code is kept in each script so
-it can be read, copied, and modified exactly like the upstream
-example. The output step is the intentional difference:
+Each retains the ViennaPS geometry and process steps; the output step uses
+`lsmesh`:
 
 ```python
 import lsmesh
@@ -14,9 +13,8 @@ import lsmesh
 lsmesh.mesh(geometry, "mesh.vtu", dimension=args.dim)
 ```
 
-Every example is a normal standalone script in `docs/examples/`.
-Examples with a configuration file are run from their own
-directory:
+Each example is a standalone script in `docs/examples/`. Run examples with a
+configuration file from their directory:
 
 ```bash
 cd docs/examples/trenchDeposition

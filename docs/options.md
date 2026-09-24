@@ -1,7 +1,6 @@
 # Lower-level options
 
-Pass `MeshOptions` when you need exact control over boundary construction and
-the external mesher:
+Pass `MeshOptions` to set boundary-construction and mesher parameters:
 
 ```python
 options = lsmesh.MeshOptions(
@@ -15,9 +14,8 @@ result = lsmesh.mesh(domain, options=options)
 ```
 
 `MeshOptions` is the package-root name for `MeshingOptions`. Supplying it
-disables automatic quality-derived sizing and recovery: lsmesh makes exactly
-one attempt with the values provided. It still computes the final quality
-report unless meshing is disabled.
+disables automatic sizing and recovery. `lsmesh` makes one attempt with the
+specified values and computes a quality report unless meshing is disabled.
 
 ## BuildOptions
 
@@ -71,10 +69,10 @@ The target fields select how much of the extracted 3D interface is retained:
 - `target_faces` is a direct per-surface fallback target.
 - leaving all targets as `None` uses the library's default total-face budget.
 
-`preserve_boundary=True` should normally remain enabled. It fixes patch
-boundaries so adjacent material surfaces remain conforming. Disabling it allows
-boundaries to move and makes `boundary_weight` relevant, but can create holes
-at material interfaces.
+`preserve_boundary=True` keeps patch boundaries fixed so adjacent material
+surfaces remain conforming. Disabling it allows boundaries to move; this can
+create gaps at material interfaces. `boundary_weight` applies when boundary
+preservation is disabled.
 
 Set `enabled=False` to pass the extracted interface triangulation through
 without decimation:
@@ -106,8 +104,8 @@ mesher = lsmesh.MesherOptions(
 | `tetgen_min_dihedral` | `0.0` | TetGen | Optional minimum dihedral angle in degrees. |
 | `tetgen_max_volume` | `None` | TetGen | Optional maximum tetrahedron volume in model units cubed. |
 
-Stricter values can improve element shape or resolution, but they may greatly
-increase element count or make difficult geometries impossible to tetrahedralize.
+Stricter values may improve element shape or resolution, but can increase the
+element count or prevent difficult geometries from being tetrahedralized.
 
 ## Pipeline controls
 
@@ -116,8 +114,8 @@ increase element count or make difficult geometries impossible to tetrahedralize
 - `validate=True` validates constructed geometry before invoking the mesher.
 - `run_mesher=True` runs Triangle or TetGen after boundary construction.
 
-Keeping validation enabled is strongly recommended. Disable meshing to inspect
-or export only the intermediate boundary:
+Validation is enabled by default. Set `run_mesher=False` to inspect or export
+the boundary without generating elements:
 
 ```python
 options = lsmesh.MeshOptions(run_mesher=False)
@@ -157,7 +155,6 @@ print(result.validation)
 print(result.quality)
 ```
 
-Start with one change at a time. In particular, set a physical
-`target_edge_length` before tightening TetGen quality and volume constraints;
-otherwise it is difficult to tell whether failures originate in surface
-construction or volume meshing.
+When tuning the pipeline, change one parameter at a time. Set a physical
+`target_edge_length` before tightening TetGen quality or volume constraints to
+distinguish surface-construction failures from volume-meshing failures.
