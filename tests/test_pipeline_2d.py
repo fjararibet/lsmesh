@@ -1,5 +1,7 @@
 """Tests for pure 2D pipeline transformations."""
 
+import lsmesh
+from lsmesh.geometry_2d import is_closed, point_in_polygon
 from lsmesh.geometry_types import Edge, Point2D
 from lsmesh.pipeline_2d import (
     _region_seed_candidates,
@@ -107,6 +109,59 @@ def test_close_2d_layer_adds_bottom_connection_to_open_layer():
         Point2D(1.0, -0.1),
     )
     assert result.edges == (Edge(0, 1), Edge(2, 3), Edge(2, 0), Edge(3, 1))
+
+
+def test_disconnected_mask_closes_islands_without_filling_substrate(tmp_path):
+    """Wall-ending mask islands must not absorb the later substrate region."""
+    mask = Layer2D(
+        points=(
+            Point2D(-2, 1),
+            Point2D(-1, 1),
+            Point2D(-1, 2),
+            Point2D(-2, 2),
+            Point2D(1, 1),
+            Point2D(2, 1),
+            Point2D(2, 2),
+            Point2D(1, 2),
+        ),
+        edges=(
+            Edge(0, 1),
+            Edge(1, 2),
+            Edge(2, 3),
+            Edge(5, 4),
+            Edge(4, 7),
+            Edge(7, 6),
+        ),
+    )
+    substrate = Layer2D(
+        points=(*mask.points, Point2D(-2, 0), Point2D(2, 0)),
+        edges=(*mask.edges, Edge(8, 9)),
+    )
+    bottom = {"leftmost_point": Point2D(-2, -1), "rightmost_point": Point2D(2, -1)}
+    closed_mask = close_2d_layer(mask, **bottom)
+    closed_substrate = close_2d_layer(substrate, **bottom)
+
+    assert is_closed(closed_mask.points, closed_mask.edges)
+    assert is_closed(closed_substrate.points, closed_substrate.edges)
+    assert len(closed_mask.points) == len(mask.points)
+    assert not point_in_polygon(Point2D(0, -0.5), closed_mask.points, closed_mask.edges)
+    assert point_in_polygon(
+        Point2D(0, -0.5), closed_substrate.points, closed_substrate.edges
+    )
+    assert point_in_polygon(Point2D(-1.5, 1.5), closed_mask.points, closed_mask.edges)
+
+    geometry = build_2d_poly_geometry(
+        (mask, substrate), epsilon=1e-6, detect_holes=True, material_ids=(7, 10)
+    )
+    assert geometry.attribute_ids.count(7) == 2
+    assert geometry.attribute_ids.count(10) == 1
+    silicon_seed = geometry.attributes[geometry.attribute_ids.index(10)]
+    assert point_in_polygon(
+        silicon_seed, closed_substrate.points, closed_substrate.edges
+    )
+    assert not point_in_polygon(silicon_seed, closed_mask.points, closed_mask.edges)
+    meshed = lsmesh.mesh(geometry, tmp_path / "stack.vtu", dimension=2)
+    assert set(meshed.mesh.attributes) == {7, 10}
 
 
 def test_collect_2d_attributes_uses_injected_sampler():

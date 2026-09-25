@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import random
 from bisect import bisect_right
+from collections import Counter
 from itertools import pairwise
 from typing import TYPE_CHECKING, Protocol
 
@@ -78,16 +79,56 @@ def close_2d_layer(
     leftmost_point: Point2D,
     rightmost_point: Point2D,
 ) -> Layer2D:
-    """Close an open 2D layer using the provided bottom points."""
+    """Close wall-ending contours, extending only the lowest one to the floor.
+
+    Several disconnected curves may end on each side wall. Pairing their ends
+    from the top closes upper islands; an unpaired bottom end on each wall
+    belongs to the substrate-spanning curve and needs the common floor.
+    """
     if geometry2d.is_closed(layer.points, layer.edges):
         return layer
-
-    points, edges = geometry2d.connect_prev(
-        points=layer.points,
-        edges=layer.edges,
-        rightmost_point=rightmost_point,
-        leftmost_point=leftmost_point,
+    points, edges = list(layer.points), list(layer.edges)
+    degree = Counter(index for edge in edges for index in edge.as_tuple())
+    ends = [index for index, count in degree.items() if count == 1]
+    width = rightmost_point.x - leftmost_point.x
+    tolerance = max(abs(width) * 1e-9, 1e-12)
+    left = sorted(
+        (
+            index
+            for index in ends
+            if abs(points[index].x - leftmost_point.x) <= tolerance
+        ),
+        key=lambda index: points[index].y,
+        reverse=True,
     )
+    right = sorted(
+        (
+            index
+            for index in ends
+            if abs(points[index].x - rightmost_point.x) <= tolerance
+        ),
+        key=lambda index: points[index].y,
+        reverse=True,
+    )
+    if len(left) + len(right) != len(ends) or len(left) % 2 != len(right) % 2:
+        msg = "Cannot close 2D interface: unmatched or off-wall endpoints"
+        raise ValueError(msg)
+    for group in (left, right):
+        paired = group[:-1] if len(group) % 2 else group
+        for first, second in zip(paired[0::2], paired[1::2], strict=True):
+            edges.append(Edge(first, second))
+    if len(left) % 2:
+        left_bottom = len(points)
+        points.append(leftmost_point)
+        right_bottom = len(points)
+        points.append(rightmost_point)
+        edges.extend(
+            (
+                Edge(left_bottom, right_bottom),
+                Edge(left_bottom, left[-1]),
+                Edge(right_bottom, right[-1]),
+            )
+        )
     return Layer2D(tuple(points), tuple(edges))
 
 
