@@ -261,13 +261,15 @@ def _crossing_sweep(
         for _low, _high, start, end in active:
             if (start.y > y) == (end.y > y):
                 continue
-            result.append(start.x + (end.x - start.x) * (y - start.y) / (end.y - start.y))
+            result.append(
+                start.x + (end.x - start.x) * (y - start.y) / (end.y - start.y)
+            )
         result.sort()
         crossings.append(result)
     return crossings
 
 
-def _region_seed_candidates(  # noqa: C901, PLR0912
+def _region_seed_candidates(  # noqa: C901, PLR0915
     layer: Layer2D,
     previous: Layer2D | None,
     *,
@@ -298,7 +300,9 @@ def _region_seed_candidates(  # noqa: C901, PLR0912
     for band_index, y in enumerate(band_heights):
         layer_xs = layer_crossings[band_index]
         comparison_xs = (
-            comparison_crossings[band_index] if comparison_crossings is not None else None
+            comparison_crossings[band_index]
+            if comparison_crossings is not None
+            else None
         )
         x_values = list(layer_xs)
         if comparison_xs is not None:
@@ -314,9 +318,10 @@ def _region_seed_candidates(  # noqa: C901, PLR0912
             inside_layer = (len(layer_xs) - bisect_right(layer_xs, point.x)) % 2 == 1
             if not inside_layer:
                 continue
-            if comparison_xs is not None and (
-                len(comparison_xs) - bisect_right(comparison_xs, point.x)
-            ) % 2 == 1:
+            if (
+                comparison_xs is not None
+                and (len(comparison_xs) - bisect_right(comparison_xs, point.x)) % 2 == 1
+            ):
                 continue
             band.append((left, right, point))
         # Keep empty bands: they are topological gaps and must prevent the
@@ -366,7 +371,10 @@ def _region_seed_candidates(  # noqa: C901, PLR0912
     for index, (left, right, point) in enumerate(intervals):
         root = find(index)
         candidate = (right - left, point)
-        if root not in widest_by_component or candidate[0] > widest_by_component[root][0]:
+        if (
+            root not in widest_by_component
+            or candidate[0] > widest_by_component[root][0]
+        ):
             widest_by_component[root] = candidate
     return tuple(candidate[1] for candidate in widest_by_component.values())
 
@@ -471,7 +479,9 @@ def collect_2d_region_seeds(
     for index, (layer, source_layer, primary) in enumerate(
         zip(closed_layers, original_layers, primary_attributes, strict=True)
     ):
-        originally_closed = geometry2d.is_closed(source_layer.points, source_layer.edges)
+        originally_closed = geometry2d.is_closed(
+            source_layer.points, source_layer.edges
+        )
         candidates = _region_seed_candidates(
             layer, previous, originally_closed=originally_closed
         )
