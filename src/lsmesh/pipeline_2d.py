@@ -425,40 +425,62 @@ def build_2d_poly_geometry(
         leftmost_point=leftmost,
         rightmost_point=rightmost,
     )
-    primary_attributes = collect_2d_attributes(
-        closed_layers,
-        enabled=detect_holes,
-        sampler=sampler,
-        original_layers=layers,
-    )
     if material_ids is not None and len(material_ids) != len(closed_layers):
         msg = "ViennaPS material count does not match the number of 2D level sets"
         raise ValueError(msg)
-    attributes: list[Point2D] = []
-    attribute_ids: list[int] = []
-    previous: Layer2D | None = None
-    if detect_holes:
-        for index, (layer, source_layer, primary) in enumerate(
-            zip(closed_layers, layers, primary_attributes, strict=True)
-        ):
-            candidates = _region_seed_candidates(
-                layer,
-                previous,
-                originally_closed=geometry2d.is_closed(
-                    source_layer.points, source_layer.edges
-                ),
-            )
-            seeds = candidates or (primary,)
-            material_id = material_ids[index] if material_ids is not None else index + 1
-            attributes.extend(seeds)
-            attribute_ids.extend([material_id] * len(seeds))
-            previous = layer
+    attributes, attribute_ids = collect_2d_region_seeds(
+        closed_layers,
+        original_layers=layers,
+        enabled=detect_holes,
+        sampler=sampler,
+        material_ids=material_ids,
+    )
     merged = merge_2d_layers(
         closed_layers,
         attributes=attributes,
         attribute_ids=attribute_ids,
     )
     return simplify_2d_geometry(merged, epsilon=epsilon)
+
+
+def collect_2d_region_seeds(
+    closed_layers: Sequence[Layer2D],
+    *,
+    original_layers: Sequence[Layer2D],
+    enabled: bool,
+    sampler: AttributeSampler2D = default_2d_attribute_sampler,
+    material_ids: Sequence[int] | None = None,
+) -> tuple[tuple[Point2D, ...], tuple[int, ...]]:
+    """Place one seed per disconnected material region, retaining material IDs."""
+    if not enabled:
+        return (), ()
+    if len(original_layers) != len(closed_layers) or (
+        material_ids is not None and len(material_ids) != len(closed_layers)
+    ):
+        msg = "2D layers and material IDs must have matching lengths"
+        raise ValueError(msg)
+    primary_attributes = collect_2d_attributes(
+        closed_layers,
+        enabled=True,
+        sampler=sampler,
+        original_layers=original_layers,
+    )
+    attributes: list[Point2D] = []
+    attribute_ids: list[int] = []
+    previous: Layer2D | None = None
+    for index, (layer, source_layer, primary) in enumerate(
+        zip(closed_layers, original_layers, primary_attributes, strict=True)
+    ):
+        originally_closed = geometry2d.is_closed(source_layer.points, source_layer.edges)
+        candidates = _region_seed_candidates(
+            layer, previous, originally_closed=originally_closed
+        )
+        seeds = candidates or (primary,)
+        material_id = material_ids[index] if material_ids is not None else index + 1
+        attributes.extend(seeds)
+        attribute_ids.extend([material_id] * len(seeds))
+        previous = layer
+    return tuple(attributes), tuple(attribute_ids)
 
 
 def geometry_2d_to_poly_text(geometry: Geometry2D) -> str:
