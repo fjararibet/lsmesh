@@ -287,8 +287,12 @@ def _region_seed_candidates(  # noqa: C901, PLR0915
     y_values = sorted({point.y for point in all_points})
     bands: list[tuple[float, list[tuple[float, float, Point2D]]]] = []
 
+    height = y_values[-1] - y_values[0]
+    minimum_band_height = max(height * 1e-9, 1e-10)
     band_heights = [
-        (lower + upper) / 2 for lower, upper in pairwise(y_values) if upper > lower
+        (lower + upper) / 2
+        for lower, upper in pairwise(y_values)
+        if upper - lower > minimum_band_height
     ]
     layer_crossings = _crossing_sweep(layer.points, layer.edges, band_heights)
     comparison_crossings = (
@@ -485,6 +489,18 @@ def collect_2d_region_seeds(
         candidates = _region_seed_candidates(
             layer, previous, originally_closed=originally_closed
         )
+        if not candidates and not (
+            geometry2d.point_in_polygon(primary, layer.points, layer.edges)
+            and (
+                previous is None
+                or originally_closed
+                or not geometry2d.point_in_polygon(
+                    primary, previous.points, previous.edges
+                )
+            )
+        ):
+            msg = f"No interior seed found for 2D layer {index}"
+            raise ValueError(msg)
         seeds = candidates or (primary,)
         material_id = material_ids[index] if material_ids is not None else index + 1
         attributes.extend(seeds)

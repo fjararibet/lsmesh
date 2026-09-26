@@ -49,6 +49,28 @@ def test_region_seeds_cover_disconnected_material_components():
     assert {point.x < 0 for point in seeds} == {False, True}
 
 
+def test_region_seeds_ignore_numerically_thin_connection():
+    """Roundoff-scale contour bands cannot supply interior region points."""
+
+    def rectangle(left, right, top):
+        return Layer2D(
+            points=(
+                Point2D(left, 0),
+                Point2D(right, 0),
+                Point2D(right, top),
+                Point2D(left, top),
+            ),
+            edges=(Edge(0, 1), Edge(1, 2), Edge(2, 3), Edge(3, 0)),
+        )
+
+    previous = rectangle(-1, 1, 1)
+    outer = rectangle(-2, 2, 1 + 1e-12)
+    seeds = _region_seed_candidates(outer, previous, originally_closed=False)
+    assert len(seeds) == 2
+    assert {point.x < 0 for point in seeds} == {False, True}
+    assert all(point.y == 0.5 for point in seeds)
+
+
 def test_compute_bottom_points_from_layers():
     """Bottom points span all layers and sit below the minimum y."""
     layers = (
